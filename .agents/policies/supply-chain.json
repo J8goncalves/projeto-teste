@@ -1,7 +1,38 @@
 {
   "version": 1,
   "politica": "Nada é instalado sem constar nesta lista, com versão fixa, revisão do security-reviewer e aprovação humana (A2).",
-  "mcp_aprovados": [],
+  "mcp_aprovados": [
+    {
+      "nome": "Chrome DevTools MCP",
+      "versao": "latest",
+      "fonte": "https://github.com/ChromeDevTools/chrome-devtools-mcp"
+    },
+    {
+      "nome": "Miro",
+      "versao": "latest",
+      "fonte": "https://developers.miro.com/docs/miro-mcp"
+    },
+    {
+      "nome": "GitHub MCP",
+      "versao": "latest",
+      "fonte": "https://github.com/github/github-mcp-server"
+    },
+    {
+      "nome": "SonarQube",
+      "versao": "latest",
+      "fonte": "https://github.com/SonarSource/sonarqube-mcp-server"
+    },
+    {
+      "nome": "PostHog",
+      "versao": "latest",
+      "fonte": "https://posthog.com/mcp"
+    },
+    {
+      "nome": "Exa",
+      "versao": "latest",
+      "fonte": "https://docs.exa.ai/reference/exa-mcp"
+    }
+  ],
   "plugins_aprovados": [],
   "skills_aprovadas": [
     "org-intake",
