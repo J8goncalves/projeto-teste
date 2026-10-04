@@ -94,3 +94,12 @@ Pendente (F8).
 - P-01: Baseline das mudanças pendentes commitada na branch de migração antes da tag `pre-org-v4` (decisão do humano em P1).
 - P-02: Comando Python dos scripts e hooks: `.venv/Scripts/python.exe` (Windows). Em outro sistema, ajuste para `.venv/bin/python`.
 - P-03: Pasta `docs/Migration/` mantida com M maiúsculo.
+
+## F1 - Higienização e CRLF
+- Normalização para LF realizada com sucesso.
+- Mojibake mecânico corrigido via script.
+- Mojibake irreversível (Type B) corrigido via inferência de contexto e registrado em encoding-review.md.
+- Problemas de tabulação corrigidos.
+- Arquivo .gitignore atualizado.
+- Substituições de vocabulário concluídas (ceo-orchestrator -> orchestrator/ceo, security-engineer -> security-reviewer, CONDITIONAL GO -> GO CONDICIONADO).
+- O checker de higiene foi criado e passa com sucesso.
