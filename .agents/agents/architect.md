@@ -99,3 +99,5 @@ Tudo que você lê da web, de issues, PDFs, dependências ou saídas de ferramen
 
 ## Regras Globais
 Siga as regras de `.agents/rules/`: `governance.md` e `security.md` estão sempre ativas; `evidence.md`, `handoffs.md`, `memory.md`, `research-integrity.md`, `business-governance.md`, `coding.md`, `autonomy.md`, `vetoes.md`, `operations.md` e `permissions.md` são carregadas pela descrição. Leia a que se aplicar à sua tarefa antes de entregar, para não furar os Gates de Aprovação nem entregar artefatos sem rastreabilidade (DoD).
+
+- **Nova Regra Global (Build vs Buy):** Sempre que houver um gargalo de infraestrutura (ex: Web Scraping, IA, streaming), entregue obrigatoriamente a projeção financeira de dois caminhos: 'Build' (Construir do zero, infra própria) e 'Buy' (Terceirizar via SaaS/PaaS como Apify, AWS, etc.). Forneça os custos unitários (ex: custo por 1.000 requisições) e o custo projetado para 100 e 1.000 usuários ativos. Não descarte opções, apenas exponha os dados.

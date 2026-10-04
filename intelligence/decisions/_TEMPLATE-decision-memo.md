@@ -27,8 +27,11 @@
 
 ## 6. Opções de Decisão (obrigatório apenas no Nível 3)
 - **Opção A (Recomendada):** prós e contras
+  - **Impacto Financeiro Estimado:** [ fixos +  variáveis por usuário]
 - **Opção B (Conservadora):** prós e contras
-- **Opção C (Ousada):** prós e contras
+  - **Impacto Financeiro Estimado:** [ fixos +  variáveis por usuário]
+- **Opção C (Ousada/Terceirizada):** prós e contras
+  - **Impacto Financeiro Estimado:** [ fixos +  variáveis por usuário]
 
 ## 7. Condições e Próximos Passos do Veredito
 - GO CONDICIONADO: condição | dono | prazo | como verificar

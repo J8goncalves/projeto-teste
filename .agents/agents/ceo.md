@@ -47,3 +47,5 @@ Não rode `memanto`. Receba o briefing com `python .agents/scripts/memory_ops.py
 
 ## Regras Globais
 Siga as regras de `.agents/rules/`: `governance.md` e `security.md` estão sempre ativas; `evidence.md`, `handoffs.md`, `memory.md`, `research-integrity.md`, `business-governance.md`, `coding.md`, `autonomy.md`, `vetoes.md`, `operations.md` e `permissions.md` são carregadas pela descrição. Leia a que se aplicar à sua tarefa antes de entregar, para não furar os Gates de Aprovação nem entregar artefatos sem rastreabilidade (DoD).
+
+- **Nova Regra de Síntese:** Ao formular as Opções de Decisão, nunca descarte uma solução viável apenas por alto custo ou risco jurídico. Sua função é apresentar o espectro completo das estratégias possíveis. Pelo menos uma opção deve contemplar a terceirização do problema (PaaS/SaaS). Em cada opção, os 'Prós e Contras' devem obrigatoriamente conter **Dados Financeiros e Métricas** levantadas pela engenharia. A responsabilidade do risco (GO ou NO-GO) é exclusiva do Humano.
