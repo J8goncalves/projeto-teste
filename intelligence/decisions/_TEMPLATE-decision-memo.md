@@ -1,73 +1,48 @@
-# Executive Decision Memo
+# Decision Memo
 
-**Data:** [YYYY-MM-DD]
-**Iniciativa:** [Nome Curto da Iniciativa/Projeto]
-**Autor:** `ceo`
-**Nível da Análise:** [Nível 1, 2 ou 3]
+**DEC:** [DEC-###]   **Run:** [RUN-AAAA-MM-NNNN]   **Iniciativa:** [slug]
+**Autor:** [ceo ou nome_do_humano]
+**Data:** [AAAA-MM-DD]
 
-## 1. Resumo Executivo e Veredito
-**Veredito Recomendado:** [GO / GO CONDICIONADO / VALIDAR ANTES / PIVOT / NO-GO]
-**Nível de Confiança:** [Alta / Média / Baixa]
-**TL;DR:** [Resumo em 2-3 parágrafos focando no problema, solução proposta, viabilidade, riscos principais e por que esta é a melhor decisão.]
+## 1. Veredito Recomendado e Confiança
+- **Veredito:** [GO / GO CONDICIONADO / VALIDAR ANTES / PIVOT / NO-GO]
+- **Confiança:** [Baixa / Média / Alta]
 
 ## 2. Pergunta de Decisão e Contexto
-- **O que estamos tentando decidir?** [A pergunta real de negócio]
-- **Contexto:** [Por que isso é relevante agora?]
+- [problema, impacto e oportunidade]
 
-## 3. Síntese de Mercado (Fatos x Inferências x Hipóteses)
-*Fonte principal: `market-researcher`*
-- **Tamanho e Tendência:** [Fatos sobre o mercado]
-- **Cenário Competitivo:** [Como os concorrentes agem]
-- **Principais Lacunas/Oportunidades:** [Onde podemos vencer]
+## 3. Premissas Críticas
+| Premissa | EVID | Força | Status |
+| :--- | :--- | :-: | :--- |
 
-## 4. Oportunidade, ICP e Proposta de Valor
-*Fonte principal: `product-strategist`*
-- **Ideal Customer Profile (ICP):** [Quem sofre o problema]
-- **Jobs to be Done (JTBD):** [O que eles estão tentando resolver]
-- **Proposta de Valor e Diferencial:** [Como vamos resolver melhor]
-- **Visão UX:** [Como a experiência será um diferencial]
+## 4. Síntese (até 5 linhas por item, com link para o original)
+- Mercado e concorrência (`market-researcher`):
+- Consumidor (`customer-researcher`):
+- Estratégia de produto e requisitos de UX (`product-strategist`):
+- Go-to-market (`marketing-strategist`, se ativo):
+- Risco, compliance e jurídico (`critical-reviewer`, `legal-compliance`):
 
-## 5. Viabilidade Econômica e Negócios
-*Fonte principal: `ceo` / Comitê*
-- **Modelo de Receita:** [Como ganha dinheiro]
-- **Custos Estimados (TCO):** [CapEx, OpEx, custo de construção]
-- **Unit Economics (Estimados):** [CAC, LTV, Margem]
+## 5. Divergências do Comitê
+- [posições, evidências e como foram tratadas; ou escaladas ao humano]
 
-## 6. Go-To-Market e Posicionamento
-*Fonte principal: `marketing-strategist`*
-- **Posicionamento:** [Como seremos percebidos]
-- **Canais Iniciais (Tração):** [Como conquistar os primeiros usuários]
-- **Motor de Crescimento:** [Loop de aquisição]
+## 6. Opções de Decisão (obrigatório apenas no Nível 3)
+- **Opção A (Recomendada):** prós e contras
+- **Opção B (Conservadora):** prós e contras
+- **Opção C (Ousada):** prós e contras
 
-## 7. Análise de Risco e Compliance (CRITICAL!)
-*Fonte principal: `critical-reviewer`*
-- **Riscos Jurídicos e Regulatórios:** [Descrever riscos, jurisprudências relevantes, LGPD, etc.]
-- **Rotas de Mitigação:** [Como fazer a solução legalmente segura]
-- **Riscos de Negócio/Execução:** [O que pode dar errado]
+## 7. Condições e Próximos Passos do Veredito
+- GO CONDICIONADO: condição | dono | prazo | como verificar
+- VALIDAR ANTES: o que validar | critério de sucesso | como
+- PIVOT: nova hipótese | o que muda
+- NO-GO: motivo registrado
 
-## 8. Divergências do Comitê
-- [Registrar se houve opiniões divergentes relevantes entre os especialistas e como o CEO as arbitrou, ou se estão sendo escaladas ao Board/Usuário].
+## 8. O que mudaria esta recomendação
+- [fatos ou resultados que inverteriam o veredito]
 
-## 9. Opções de Decisão
-- **Opção A (Recomendada):** [Descrição breve + Prós/Contras]
-- **Opção B (Conservadora):** [Descrição breve + Prós/Contras]
-- **Opção C (Ousada/Agressiva):** [Descrição breve + Prós/Contras]
+## 9. Decisões Pendentes do Humano
+- [ ] Aprovar: [decisão]
+- [ ] Aprovar orçamento e tempo: [estimativa]
+- [ ] Próximo passo após aprovação: acionar `product-manager` com o Handoff Package.
 
-## 10. Premissas Críticas e Validação
-- **Premissa 1:** [Qual premissa pode quebrar o negócio se for falsa] -> **Como validar:** [Experimento]
-
-## 11. Engineering Handoff Brief (Se Veredito = GO)
-*Instruções diretas para a equipe de Engenharia (`product-manager`, `architect`, etc.)*
-- **Escopo do MVP (In/Out):**
-  - IN: [...]
-  - OUT: [...]
-- **Restrições Jurídicas e de Compliance:** [Requisitos técnicos oriundos da análise jurídica. Ex: "Todos os dados de log devem ser anonimizados"]
-- **Diretrizes Arquiteturais de Negócio:** [Ex: "KISS. Solução local primeiro."]
-
-## 12. Próximos Passos e Decisões Pendentes (Usuário)
-- [ ] O usuário precisa aprovar: [Decisão A]
-- [ ] O usuário precisa aprovar o orçamento/tempo de: [Estimativa X]
-- [ ] Próximo passo após aprovação: Acionar `product-manager` para PRD Técnico.
-
-## 13. Fontes de Dados
-- [Links, dados públicos, etc.]
+## 10. Fontes
+- [EVID e links]
