@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "niveis": {
+    "1": {
+      "nome": "Ajuste",
+      "discovery": false,
+      "ceo": false,
+      "memo": "nenhum",
+      "gates": [3, 4],
+      "roster_base": ["orchestrator", "developer", "qa"],
+      "roster_condicional": {"architect": "mudanca_de_design", "security-reviewer": "sensibilidade>=1", "product-manager": "criterios_ambiguos", "devops-finops": "release"},
+      "evidencia_minima": "nenhuma",
+      "invocacoes_max": 120,
+      "cota_memoria": 1,
+      "opcoes_abc": false
+    },
+    "2": {
+      "nome": "Enxuto",
+      "discovery": "enxuto",
+      "ceo": false,
+      "memo": "curto",
+      "gates": [0, 1, 2, 3, 4],
+      "roster_base": ["orchestrator", "market-researcher", "customer-researcher", "product-strategist", "critical-reviewer", "data-analytics", "product-manager", "architect", "security-reviewer", "developer", "qa", "devops-finops"],
+      "roster_condicional": {"marketing-strategist": "monetizacao_na_decisao", "legal-compliance": "gatilho_juridico", "experiment-designer": "premissa_critica_abaixo_de_E1"},
+      "evidencia_minima": "E1",
+      "invocacoes_max": 500,
+      "cota_memoria": 3,
+      "opcoes_abc": false
+    },
+    "3": {
+      "nome": "Completo",
+      "discovery": "completo",
+      "ceo": true,
+      "memo": "completo",
+      "gates": [0, 1, 2, 3, 4],
+      "roster_base": ["orchestrator", "ceo", "market-researcher", "customer-researcher", "product-strategist", "marketing-strategist", "critical-reviewer", "legal-compliance", "experiment-designer", "data-analytics", "product-manager", "architect", "security-reviewer", "developer", "qa", "devops-finops"],
+      "roster_condicional": {},
+      "evidencia_minima": "E2_ou_aceite_de_risco",
+      "invocacoes_max": 1500,
+      "cota_memoria": 8,
+      "opcoes_abc": true
+    }
+  },
+  "triagem": {
+    "criterios": ["reversibilidade", "custo_do_erro", "incerteza_de_demanda", "sensibilidade", "esforco"],
+    "nota_por_criterio": [0, 1, 2],
+    "faixas": {"1": [0, 3], "2": [4, 6], "3": [7, 10]},
+    "elevacoes": [
+      {"se": "dados_pessoais", "nivel_minimo": 2, "ativa": ["legal-compliance", "security-reviewer"]},
+      {"se": "acao_irreversivel", "nivel_minimo": 3},
+      {"se": "gasto_acima_do_limite", "nivel_minimo": 3}
+    ]
+  },
+  "limite_gasto_brl": 0,
+  "paralelismo_max_subagentes": 3,
+  "ciclos_max": 3,
+  "debate_rodadas_max": 2,
+  "orcamento": {"unidade": "invocacoes_do_modelo", "alerta": 0.8, "encerrar": 1.0, "kill": 1.2},
+  "limites_fontes_pesquisa": {"1": 0, "2": 8, "3": 20},
+  "retencao": {"events_meses": 12, "usage_dias": 90},
+  "nota": "Valores numéricos são iniciais; recalibrar após 10 runs. limite_gasto_brl 0 significa que qualquer gasto exige decisão humana (Nível 3)."
+}

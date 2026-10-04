@@ -1,0 +1,334 @@
+{
+  "version": 1,
+  "tipos": {
+    "`intake`": {
+      "arquivo": "`runs/{run}/intake.md`",
+      "secoes": [
+        "Problema",
+        "Critérios de sucesso",
+        "Restrições",
+        "Flags",
+        "Nível",
+        "Pontuação da triagem",
+        "Orçamento",
+        "Roster"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [],
+      "marcador_resultado": false
+    },
+    "`market-research`": {
+      "arquivo": "`docs/initiatives/{slug}/market-research.md`",
+      "secoes": [
+        "Pergunta de pesquisa e escopo",
+        "Principais achados",
+        "Lacunas de evidência",
+        "Fontes"
+      ],
+      "secoes_nivel3": [
+        "Contexto e mercado",
+        "Matriz competitiva",
+        "Hipóteses levantadas"
+      ],
+      "referencias": [
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`customer-research`": {
+      "arquivo": "`.../customer-research.md`",
+      "secoes": [
+        "Pergunta de pesquisa e escopo",
+        "Dores e Jobs-to-be-Done",
+        "Lacunas de evidência",
+        "Fontes"
+      ],
+      "secoes_nivel3": [
+        "Objeções e motivos de abandono",
+        "Plano de pesquisa primária"
+      ],
+      "referencias": [
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`product-strategy`": {
+      "arquivo": "`.../product-strategy.md`",
+      "secoes": [
+        "Resumo",
+        "ICP",
+        "Proposta de valor",
+        "Escopo do MVP",
+        "Not Doing List",
+        "Métricas e critérios de kill",
+        "Premissas críticas"
+      ],
+      "secoes_nivel3": [
+        "Jornada",
+        "Requisitos de UX",
+        "Monetização e preço"
+      ],
+      "referencias": [
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`gtm-strategy`": {
+      "arquivo": "`.../gtm-strategy.md`",
+      "secoes": [
+        "Posicionamento",
+        "Canais e experimentos",
+        "Unit economics (faixas e premissas)",
+        "Riscos"
+      ],
+      "secoes_nivel3": [
+        "Plano de lançamento",
+        "Estratégia de conteúdo"
+      ],
+      "referencias": [
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`critical-review`": {
+      "arquivo": "`.../critical-review.md`",
+      "secoes": [
+        "Veredito do Red Team",
+        "Premissas Assassinas",
+        "Pre-Mortem",
+        "Condições Mínimas de Viabilidade",
+        "Critérios de kill",
+        "Matriz de riscos",
+        "Inconsistências e números sem lastro"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`legal-review`": {
+      "arquivo": "`.../legal-compliance-review.md`",
+      "secoes": [
+        "Data de referência",
+        "Enquadramento jurídico",
+        "Jurisprudência e fontes",
+        "Matriz de riscos jurídicos",
+        "Caminho de menor risco",
+        "Requisitos para engenharia",
+        "Itens que exigem parecer formal"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [],
+      "marcador_resultado": false
+    },
+    "`validation-plan`": {
+      "arquivo": "`.../validation-plan.md`",
+      "secoes": [
+        "Hipótese",
+        "Métrica",
+        "Critério de sucesso",
+        "Critério de kill",
+        "Amostra e duração",
+        "Orçamento",
+        "Execução e aprovação",
+        "Riscos legais e éticos"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [],
+      "marcador_resultado": false
+    },
+    "`experiment-result`": {
+      "arquivo": "`.../experiment-result.md`",
+      "secoes": [
+        "Resultado versus critério de kill",
+        "Dados e método",
+        "Limitações"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`tracking-plan`": {
+      "arquivo": "`.../tracking-plan.md`",
+      "secoes": [
+        "North Star",
+        "Eventos e propriedades",
+        "Métricas de sucesso",
+        "Critérios de kill",
+        "Janela de coleta",
+        "Privacidade"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [],
+      "marcador_resultado": false
+    },
+    "`decision-package`": {
+      "arquivo": "`.../decision-package.md`",
+      "secoes": [
+        "Pergunta de decisão",
+        "Premissas críticas e força da evidência",
+        "Divergências entre agentes",
+        "Vetos abertos",
+        "Riscos abertos",
+        "Custo consumido",
+        "Artefatos originais"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`decision-memo`": {
+      "arquivo": "`intelligence/decisions/DEC-*.md`",
+      "secoes": [
+        "Veredito recomendado e confiança",
+        "Pergunta de decisão e contexto",
+        "Premissas críticas",
+        "Síntese",
+        "Divergências do comitê",
+        "O que mudaria esta recomendação",
+        "Decisões pendentes do humano",
+        "Fontes"
+      ],
+      "secoes_nivel3": [
+        "Opções de decisão"
+      ],
+      "referencias": [
+        "`DEC-`",
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`handoff-package`": {
+      "arquivo": "`.../handoff-package.md`",
+      "secoes": [
+        "Escopo do MVP",
+        "Not Doing List",
+        "North Star e critérios de sucesso e kill",
+        "Restrições jurídicas e de compliance",
+        "Condições",
+        "Artefatos originais"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "`DEC-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`prd`": {
+      "arquivo": "`.../prd.md`",
+      "secoes": [
+        "Objetivo",
+        "Dor a ser atendida",
+        "Escopo",
+        "Fora do escopo",
+        "User Stories",
+        "Critérios de aceite",
+        "Regras de negócio",
+        "Requisitos de segurança e conformidade",
+        "Plano de testes",
+        "Dependências",
+        "Riscos",
+        "Questões em aberto"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "`REQ-`",
+        "`US-`"
+      ],
+      "marcador_resultado": false
+    },
+    "`threat-model`": {
+      "arquivo": "`.../threat-model.md`",
+      "secoes": [
+        "Ativos",
+        "Fronteiras de confiança",
+        "STRIDE",
+        "Abuse cases",
+        "Requisitos de segurança"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [],
+      "marcador_resultado": false
+    },
+    "`cost-analysis`": {
+      "arquivo": "`.../cost-analysis.md`",
+      "secoes": [
+        "Premissas",
+        "Faixas de custo",
+        "Preços usados (fonte e data)",
+        "Riscos de custo"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [],
+      "marcador_resultado": false
+    },
+    "`release-plan`": {
+      "arquivo": "`.../release-plan.md`",
+      "secoes": [
+        "Observabilidade",
+        "Rollback",
+        "Deploy",
+        "Verificações pós-release"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [],
+      "marcador_resultado": false
+    },
+    "`test-report`": {
+      "arquivo": "`.../test-report.md`",
+      "secoes": [
+        "Cobertura dos critérios de aceite",
+        "Evidências"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "`US-` (marcador de resultado obrigatório)"
+      ],
+      "marcador_resultado": false
+    },
+    "`security-review`": {
+      "arquivo": "`.../security-review.md`",
+      "secoes": [
+        "Scanners executados",
+        "Findings",
+        "Status"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "(marcador de resultado obrigatório)"
+      ],
+      "marcador_resultado": false
+    },
+    "`pr-review`": {
+      "arquivo": "`.../pr-review.md`",
+      "secoes": [
+        "Conformidade com ADRs",
+        "Resultado"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "(marcador de resultado obrigatório)"
+      ],
+      "marcador_resultado": false
+    },
+    "`release-report`": {
+      "arquivo": "`.../release-report.md`",
+      "secoes": [
+        "Resultado versus North Star",
+        "Resultado versus critérios de kill",
+        "Aprendizados",
+        "Próximas hipóteses"
+      ],
+      "secoes_nivel3": [],
+      "referencias": [
+        "`EVID-`"
+      ],
+      "marcador_resultado": false
+    }
+  }
+}

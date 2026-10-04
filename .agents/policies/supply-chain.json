@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "politica": "Nada é instalado sem constar nesta lista, com versão fixa, revisão do security-reviewer e aprovação humana (A2).",
+  "mcp_aprovados": [
+    {
+      "nome": "Chrome DevTools MCP",
+      "versao": "latest",
+      "fonte": "https://github.com/ChromeDevTools/chrome-devtools-mcp"
+    },
+    {
+      "nome": "Miro",
+      "versao": "latest",
+      "fonte": "https://developers.miro.com/docs/miro-mcp"
+    },
+    {
+      "nome": "GitHub MCP",
+      "versao": "latest",
+      "fonte": "https://github.com/github/github-mcp-server"
+    },
+    {
+      "nome": "SonarQube",
+      "versao": "latest",
+      "fonte": "https://github.com/SonarSource/sonarqube-mcp-server"
+    },
+    {
+      "nome": "PostHog",
+      "versao": "latest",
+      "fonte": "https://posthog.com/mcp"
+    },
+    {
+      "nome": "Exa",
+      "versao": "latest",
+      "fonte": "https://docs.exa.ai/reference/exa-mcp"
+    }
+  ],
+  "plugins_aprovados": [],
+  "skills_aprovadas": [
+    "org-intake",
+    "org-run",
+    "org-gate",
+    "org-memory-ops",
+    "org-decision-docs",
+    "org-agent-eval",
+    "legal-reference",
+    "market-research-playbook",
+    "product-strategy-playbook",
+    "gtm-playbook",
+    {
+      "nome": "memanto",
+      "preexistente": true
+    }
+  ],
+  "recomendados_para_avaliacao": [
+    {
+      "nome": "Chrome DevTools MCP",
+      "uso": "qa: console, rede e Lighthouse",
+      "fonte": "https://github.com/ChromeDevTools/chrome-devtools-mcp"
+    },
+    {
+      "nome": "Miro",
+      "uso": "ceo e product-strategist",
+      "fonte": "https://developers.miro.com/docs/miro-mcp"
+    },
+    {
+      "nome": "GitHub MCP",
+      "uso": "product-manager: issues e PRs",
+      "fonte": "https://github.com/github/github-mcp-server"
+    },
+    {
+      "nome": "SonarQube",
+      "uso": "security-reviewer",
+      "fonte": "https://github.com/SonarSource/sonarqube-mcp-server"
+    },
+    {
+      "nome": "PostHog",
+      "uso": "data-analytics (somente leitura)",
+      "fonte": "https://posthog.com/mcp"
+    },
+    {
+      "nome": "Exa",
+      "uso": "pesquisa web adicional",
+      "fonte": "https://docs.exa.ai/reference/exa-mcp"
+    }
+  ],
+  "regras": [
+    "versão fixa",
+    "ler o código antes de instalar",
+    "revisão do security-reviewer",
+    "aprovação humana registrada",
+    "preferir disabledTools para ocultar ferramentas de escrita não usadas"
+  ]
+}

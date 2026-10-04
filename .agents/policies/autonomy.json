@@ -1,0 +1,122 @@
+{
+  "acoes": [
+    {
+      "acao": "Pesquisa em fontes públicas; hipóteses, PRD e histórias",
+      "nivel": "A3",
+      "aprovador": "Revisão posterior",
+      "enforcement": "instrucao"
+    },
+    {
+      "acao": "Abrir PR; refatorar dentro do repositório",
+      "nivel": "A3",
+      "aprovador": "Revisão posterior",
+      "enforcement": "instrucao"
+    },
+    {
+      "acao": "Merge na branch principal (Gate 3)",
+      "nivel": "A2",
+      "aprovador": "Humano",
+      "enforcement": "hook, permissao"
+    },
+    {
+      "acao": "Deploy em staging",
+      "nivel": "A3",
+      "aprovador": "Revisão posterior",
+      "enforcement": "hook, permissao"
+    },
+    {
+      "acao": "Deploy em produção (Gate 4)",
+      "nivel": "A2",
+      "aprovador": "Humano",
+      "enforcement": "hook, permissao"
+    },
+    {
+      "acao": "Experimento com tráfego real ou anúncios",
+      "nivel": "A2",
+      "aprovador": "Humano, com orçamento definido",
+      "enforcement": "instrucao"
+    },
+    {
+      "acao": "Alteração de arquitetura irreversível",
+      "nivel": "A1",
+      "aprovador": "Humano",
+      "enforcement": "instrucao"
+    },
+    {
+      "acao": "Gasto (limite atual: qualquer gasto) ou serviço pago",
+      "nivel": "A1",
+      "aprovador": "Humano",
+      "enforcement": "hook, permissao"
+    },
+    {
+      "acao": "Acesso ou migração de dados pessoais ou sensíveis",
+      "nivel": "A1",
+      "aprovador": "Humano",
+      "enforcement": "instrucao"
+    },
+    {
+      "acao": "Contrato ou comunicação externa em nome da empresa",
+      "nivel": "A0",
+      "aprovador": "Humano",
+      "enforcement": "instrucao"
+    },
+    {
+      "acao": "Decisão do Gate 1",
+      "nivel": "A1",
+      "aprovador": "Humano",
+      "enforcement": "instrucao"
+    },
+    {
+      "acao": "Alterar cards, regras, políticas, hooks, scripts",
+      "nivel": "A1",
+      "aprovador": "Humano, via PR",
+      "enforcement": "permissao"
+    },
+    {
+      "acao": "Instalar MCP, skill ou plugin",
+      "nivel": "A2",
+      "aprovador": "Humano",
+      "enforcement": "hook, permissao"
+    },
+    {
+      "acao": "Gravar ou apagar memória (commit, forget)",
+      "nivel": "A2",
+      "aprovador": "Humano",
+      "enforcement": "hook"
+    }
+  ],
+  "direitos_de_decisao": [
+    {
+      "decisao": "Repetir pesquisa, pedir evidência extra, retry",
+      "decide": "orchestrator, dentro do orçamento"
+    },
+    {
+      "decisao": "Ajuste de escopo sem mudar ICP, North Star, MVP nem orçamento",
+      "decide": "orchestrator, com product-manager e product-strategist"
+    },
+    {
+      "decisao": "Mudança de ICP, North Star, MVP ou orçamento da run",
+      "decide": "ceo recomenda (Nível 3); humano decide"
+    },
+    {
+      "decisao": "Conflito entre agentes sem veto",
+      "decide": "orchestrator, aplicando a política"
+    },
+    {
+      "decisao": "Gate 1",
+      "decide": "Humano"
+    },
+    {
+      "decisao": "Gates 3 e 4",
+      "decide": "Humano"
+    },
+    {
+      "decisao": "Override de veto de Security, Legal ou DevOps/FinOps",
+      "decide": "Somente humano"
+    },
+    {
+      "decisao": "Override de veto do Critical Reviewer",
+      "decide": "ceo recomenda (Nível 3); humano decide"
+    }
+  ]
+}

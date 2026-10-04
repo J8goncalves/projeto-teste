@@ -1,3 +1,7 @@
+---
+trigger: model_decision
+description: "Aplique ao escrever, revisar ou commitar código: Clean Code, SOLID, Conventional Commits, testes e cobertura."
+---
 # Padrões e Convenções de Código
 
 ## Princípios Fundamentais
@@ -21,3 +25,5 @@
    - Todo novo recurso deve vir acompanhado de testes unitários.
    - Manter cobertura de testes consistente em 85%.
    - Não subir código com warnings de linter ou erros de tipagem.
+
+- Antes de pedir revisão, rode localmente lint, tipagem, testes, cobertura e varredura de segredos. Abra o PR só com tudo verde.
