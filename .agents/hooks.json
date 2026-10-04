@@ -1,0 +1,52 @@
+{
+  "org-guard": {
+    "enabled": false,
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".\\\\.venv\\\\Scripts\\\\python.exe .agents/scripts/hooks/pretool_guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "org-budget": {
+    "enabled": false,
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": ".\\\\.venv\\\\Scripts\\\\python.exe .agents/scripts/hooks/postinvocation_budget.py",
+        "timeout": 10
+      }
+    ]
+  },
+  "org-state": {
+    "enabled": false,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": ".\\\\.venv\\\\Scripts\\\\python.exe .agents/scripts/hooks/preinvocation_state.py",
+        "timeout": 10
+      }
+    ]
+  },
+  "org-events": {
+    "enabled": false,
+    "PostToolUse": [
+      {
+        "matcher": "invoke_subagent|run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".\\\\.venv\\\\Scripts\\\\python.exe .agents/scripts/hooks/posttool_events.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

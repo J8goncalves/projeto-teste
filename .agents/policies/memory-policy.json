@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "backend_exigido": "on-prem",
+  "agente_memanto": "org-core",
+  "tipos_permitidos": ["decision", "learning", "error", "fact", "instruction", "commitment", "goal"],
+  "tipos_nao_usar": ["observation", "artifact", "event", "context", "preference", "relationship"],
+  "mapeamento": {
+    "RISK": {"type": "fact", "tag": "risk-open"},
+    "INCIDENT": {"type": "error"},
+    "CONSTRAINT": {"type": "instruction"}
+  },
+  "forca_para_confianca": {"E1": [0.70, 0.85], "E2": [0.90, 1.00]},
+  "confianca_minima": 0.70,
+  "proveniencia_permitida": ["explicit_statement", "observed", "corrected", "validated", "inferred"],
+  "proveniencia_por_tipo": {"decision": ["explicit_statement", "validated"]},
+  "tags": {
+    "max": 5,
+    "prefixos_ref": ["dec-", "evid-"],
+    "ref_obrigatoria": true,
+    "ttl_validas": ["ttl-30d", "ttl-90d", "ttl-180d", "ttl-2y", "ttl-never"],
+    "ttl_obrigatoria_para": ["fact"],
+    "flags": ["risk-open", "method", "pinned"],
+    "prefixo_supersede": "supersedes-"
+  },
+  "conteudo": {"min_chars": 30, "max_chars": 400},
+  "pontuacao": {"criterios": ["impacto", "reuso", "redescoberta", "solidez"], "nota": [0, 1, 2], "soma_minima": 5, "solidez_minima": 1},
+  "cota_por_nivel": {"1": 1, "2": 3, "3": 8},
+  "briefing": {
+    "estados_permitidos": ["INTAKE", "DISCOVERY", "PLANNING", "DESIGN", "LEARN"],
+    "max_itens": 5,
+    "min_similarity": 0.8,
+    "min_confidence": 0.7,
+    "apenas_ativas": true,
+    "max_chars": 6000
+  },
+  "independentes": {
+    "papeis": ["market-researcher", "customer-researcher", "critical-reviewer", "legal-compliance"],
+    "tipos": ["fact", "instruction", "learning"],
+    "tag_obrigatoria_para_learning": "method"
+  },
+  "padroes_proibidos": [
+    "\\b\\d{3}\\.?\\d{3}\\.?\\d{3}-?\\d{2}\\b",
+    "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}",
+    "\\(?\\d{2}\\)?\\s?9?\\d{4}-?\\d{4}",
+    "AKIA[0-9A-Z]{16}",
+    "ghp_[A-Za-z0-9]{20,}",
+    "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+    "(?i)(api[_-]?key|secret|token|passw(or)?d|senha)\\s*[:=]\\s*\\S+",
+    "(?i)ignore (all|any|previous|above|the) (instructions|rules|prompts?)",
+    "(?i)you are now",
+    "(?i)disregard .{0,40}instructions",
+    "(?i)(o usu[aá]rio|o humano) (disse|pediu|mandou)",
+    "(?i)\\b(escolhemos|concordamos|decidimos hoje)\\b"
+  ],
+  "retencao": {"events_meses": 12, "usage_dias": 90}
+}

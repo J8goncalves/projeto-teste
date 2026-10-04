@@ -103,3 +103,15 @@ Pendente (F8).
 - Arquivo .gitignore atualizado.
 - Substituições de vocabulário concluídas (ceo-orchestrator -> orchestrator/ceo, security-engineer -> security-reviewer, CONDITIONAL GO -> GO CONDICIONADO).
 - O checker de higiene foi criado e passa com sucesso.
+
+## F2 - Regras
+- Regras foram atualizadas com 	rigger e description em .agents/rules/.
+- Orçamento lways_on validado com sucesso (abaixo de 12KB).
+- Novas regras criadas: utonomy.md, operations.md, permissions.md, etoes.md.
+- AGENTS.md criado/atualizado com as orientações do V4.
+
+## F3 - Control plane
+- Criados arquivos JSON em .agents/policies/: 	ransitions.json, levels.json, utonomy.json, guards.json, memory-policy.json, supply-chain.json.
+- Criado arquivo rtifacts.json em .agents/schemas/.
+- Criados scripts de hooks em .agents/scripts/hooks/ e atualizado hooks.json.
+- Criado docs/setup/antigravity-permissions.md.
