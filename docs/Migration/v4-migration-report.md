@@ -163,3 +163,9 @@ Controles como memanto são barrados via skill org-memory-ops, em favor dos scri
 
 As próximas fases e os hooks dependem de aprovação e execução exclusivas pelo Humano (Fase F9).
 A migração da Organização de Agentes para V4 foi concluída e está pronta para uso!
+
+
+## Fase F9 (Passos que só o humano pode fazer)
+- Pendências humanas copiadas para docs/setup/HUMAN-STEPS.md com status pendente.
+
+**PARADA P6**: Aguardando revisão humana.
