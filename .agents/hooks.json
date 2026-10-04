@@ -1,6 +1,6 @@
 {
   "org-guard": {
-    "enabled": false,
+    "enabled": true,
     "PreToolUse": [
       {
         "matcher": "*",
@@ -15,7 +15,7 @@
     ]
   },
   "org-budget": {
-    "enabled": false,
+    "enabled": true,
     "PostInvocation": [
       {
         "type": "command",
@@ -25,7 +25,7 @@
     ]
   },
   "org-state": {
-    "enabled": false,
+    "enabled": true,
     "PreInvocation": [
       {
         "type": "command",
@@ -35,7 +35,7 @@
     ]
   },
   "org-events": {
-    "enabled": false,
+    "enabled": true,
     "PostToolUse": [
       {
         "matcher": "invoke_subagent|run_command",
