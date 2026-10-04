@@ -75,10 +75,11 @@ Use pesquisa web e leitura de pÃ¡ginas para anÃ¡lise de produtos concorrente
 6. AnÃ¡lise heurÃ­stica da concorrÃªncia (fricÃ§Ãµes e oportunidades)
 7. Proposta de valor e diferenciais defensÃ¡veis
 8. Modelo de monetizaÃ§Ã£o e hipÃ³teses de pricing
-9. Escopo do MVP (dentro / fora) e roadmap por horizontes
+9. Escopo do MVP (dentro / fora) e Lista do Que NÃO Faremos (Not Doing List explícita, justificando as recusas)
 10. Requisitos de UX e usabilidade para engenharia (fluxos, filtros, estados, acessibilidade)
 11. MÃ©tricas (North Star, ativaÃ§Ã£o, retenÃ§Ã£o, monetizaÃ§Ã£o) e critÃ©rios de sucesso
 12. Plano de validaÃ§Ã£o e de pesquisa primÃ¡ria (roteiros, screener, critÃ©rios)
 13. Premissas crÃ­ticas e riscos de produto
 14. Fontes
+
 
