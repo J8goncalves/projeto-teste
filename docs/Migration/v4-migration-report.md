@@ -140,3 +140,26 @@ Pendente (F8).
 - [x] Criação de data-analytics.md
 - [x] Atualização em massa dos blocos Memória, Evidência, Conteúdo Externo e Regras Globais
 - [x] Revisão dos campos YAML (model, tools, commandExecutionPolicy)
+
+## Fase F6 (Skills)
+- [x] Criação de org-intake, org-run, org-gate, org-memory-ops, org-decision-docs, org-agent-eval.
+- [x] Criação das skills de Playbook (legal-reference, market-research-playbook, product-strategy-playbook, gtm-playbook) mantendo o texto das Fases F5.
+
+## Fase F7 (Documentos, templates e fluxo)
+- [x] Criação dos templates de decisão (_TEMPLATE-decision-memo.md, _TEMPLATE-decision-package.md, _TEMPLATE-handoff-package.md).
+- [x] Migração de eature-lifecycle.md para Skill.
+- [x] Criação da nova company-architecture.md atualizada para a V4 (com Mermaid arrumado e Tabela de Agentes).
+
+## Fase F8 (Avaliação, verificação final e relatório)
+- [x] Suíte de avaliação criada (evals/README.md, evals/cases/*, e evals/fixtures/todo-api/*) com falhas plantadas.
+- [x] Script org_check.py construído e validado (0 falhas).
+- [x] Os 8 testes em 	ests_all.py passaram com sucesso e hygiene_check.py também passou limpo.
+- [x] As políticas, regras e cartões estão consistentes. Os hooks não estão habilitados sem ordem humana.
+
+## Resumo Executivo
+Migração executada com exatidão conforme as exigências (Nível 1 a 3, Gates 0 a 4, Autonomia).
+Tabela de decisões da F5 a F8: todas implantadas corretamente.
+Controles como memanto são barrados via skill org-memory-ops, em favor dos scripts Python (que aplicam as regras de filtragem rigorosas antes da gravação). 
+
+As próximas fases e os hooks dependem de aprovação e execução exclusivas pelo Humano (Fase F9).
+A migração da Organização de Agentes para V4 foi concluída e está pronta para uso!
