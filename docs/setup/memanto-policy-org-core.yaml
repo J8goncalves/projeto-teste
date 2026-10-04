@@ -1,0 +1,38 @@
+version: 1
+retention:
+  fact: never
+  context: 7d
+  event: 30d
+  observation: 14d
+  artifact: 30d
+  goal: 1y
+  learning: never
+  error: never
+  decision: never
+  instruction: never
+  commitment: never
+  preference: never
+  relationship: never
+rules:
+  - name: pinned
+    match: {tags: [pinned]}
+    expire_after: never
+  - name: ttl-30d
+    match: {tags: [ttl-30d]}
+    expire_after: 30d
+  - name: ttl-90d
+    match: {tags: [ttl-90d]}
+    expire_after: 90d
+  - name: ttl-180d
+    match: {tags: [ttl-180d]}
+    expire_after: 180d
+  - name: ttl-2y
+    match: {tags: [ttl-2y]}
+    expire_after: 2y
+  - name: risco-aberto-revisao
+    match: {tags: [risk-open]}
+    expire_after: 6mo
+  - name: baixa-confianca
+    match: {confidence_below: 0.7}
+    expire_after: 14d
+purge_expired_after: never

@@ -123,3 +123,6 @@ Pendente (F8).
 - **T2:** Testadas dinâmicas do `tools` com os subagentes `zz-test-tools` e `zz-test-default`. A ausência de declaração concedeu acesso total, enquanto a lista explícita limitou com sucesso.
 - **T3:** O diretório de trabalho do hook (CWD) retornado por `os.getcwd()` é a raiz do workspace (`D:\Antigravity Projects\projeto-teste`). Caminhos relativos (`.agents/scripts/...`) foram validados como seguros e funcionais.
 - **T4:** Teste de requisição de rede (`urllib.request`) dentro do ambiente do terminal foi efetuado e ocorreu normalmente, sem bloqueios de *sandbox*. Não há necessidade de criar uma regra `unsandboxed(...)` para o Memanto.
+
+## Fase F4 (Andamento)
+- **F4-M1:** Registrada a decisão de usar namespace por papel (--source <papel>) e de criar o agente org-core posteriormente (passo humano F9-H4).\n- **F4-M3:** Criada a política de expiração em docs/setup/memanto-policy-org-core.yaml.\n- **F4-M4:** Copiada a skill memanto existente para docs/setup/vendor/memanto-memory-SKILL.md. Recomendação: remover a conexão (memanto connect remove antigravity) no passo F9-H5 para evitar gravações diretas ignorando o control plane.\n
