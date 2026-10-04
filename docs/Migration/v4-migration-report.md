@@ -133,3 +133,10 @@ Pendente (F8).
 - **F4-M2 e M5 (Verificação):** O `memory_ops.py` foi implementado em conformidade com as regras de subcomandos (`brief`, `propose`, `list`, `commit`, `export` e `status`).
 - **Fake Executable:** Criado `fake_memanto.py` para injetar comportamento controlado via variável `MEMANTO_BIN` durante os testes do memory wrapper.
 - Nenhuma operação de escrita foi propagada para o CLI real do Memanto; validação do `status` (`on-prem`) confirmada.
+
+## Fase F5 (Cards dos agentes)
+- [x] Atualização do Orchestrator e CEO
+- [x] Extração de textos para Playbooks e Skills (market-research, product-strategy, gtm-strategy, legal-compliance)
+- [x] Criação de data-analytics.md
+- [x] Atualização em massa dos blocos Memória, Evidência, Conteúdo Externo e Regras Globais
+- [x] Revisão dos campos YAML (model, tools, commandExecutionPolicy)
