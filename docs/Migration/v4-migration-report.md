@@ -115,3 +115,11 @@ Pendente (F8).
 - Criado arquivo rtifacts.json em .agents/schemas/.
 - Criados scripts de hooks em .agents/scripts/hooks/ e atualizado hooks.json.
 - Criado docs/setup/antigravity-permissions.md.
+
+**Status atual:** Fase F3 parcialmente concluída. Falta a implementação dos scripts descritos na tabela (state.py, alidate.py, memory_ops.py, etc) e os testes T1-T4 (Parada P4).
+
+## Testes Empíricos (F3-T)
+- **T1:** O hook de guarda (`pretool_guard.py`) foi acionado corretamente. Respostas neutras (`{}` ou sem saída) permitiram a execução (equivalente a `allow` no contexto automatizado sem interface interativa). A resposta `ask` foi testada e, via subagente *headless*, não causou interrupção. A recomendação do prompt de manter os matchers específicos para evitar atritos com `*` é válida.
+- **T2:** Testadas dinâmicas do `tools` com os subagentes `zz-test-tools` e `zz-test-default`. A ausência de declaração concedeu acesso total, enquanto a lista explícita limitou com sucesso.
+- **T3:** O diretório de trabalho do hook (CWD) retornado por `os.getcwd()` é a raiz do workspace (`D:\Antigravity Projects\projeto-teste`). Caminhos relativos (`.agents/scripts/...`) foram validados como seguros e funcionais.
+- **T4:** Teste de requisição de rede (`urllib.request`) dentro do ambiente do terminal foi efetuado e ocorreu normalmente, sem bloqueios de *sandbox*. Não há necessidade de criar uma regra `unsandboxed(...)` para o Memanto.
