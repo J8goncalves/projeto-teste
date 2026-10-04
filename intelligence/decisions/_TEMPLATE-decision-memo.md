@@ -2,7 +2,7 @@
 
 **Data:** [YYYY-MM-DD]
 **Iniciativa:** [Nome Curto da Iniciativa/Projeto]
-**Autor:** `ceo-orchestrator`
+**Autor:** `ceo`
 **Nível da Análise:** [Nível 1, 2 ou 3]
 
 ## 1. Resumo Executivo e Veredito
@@ -28,7 +28,7 @@
 - **Visão UX:** [Como a experiência será um diferencial]
 
 ## 5. Viabilidade Econômica e Negócios
-*Fonte principal: `ceo-orchestrator` / Comitê*
+*Fonte principal: `ceo` / Comitê*
 - **Modelo de Receita:** [Como ganha dinheiro]
 - **Custos Estimados (TCO):** [CapEx, OpEx, custo de construção]
 - **Unit Economics (Estimados):** [CAC, LTV, Margem]

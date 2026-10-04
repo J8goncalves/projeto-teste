@@ -1,4 +1,4 @@
-﻿---
+---
 name: orchestrator
 description: Coordenador de estado e roteamento. Focado em dependências, handoffs e bloqueios organizacionais.
 model: pro

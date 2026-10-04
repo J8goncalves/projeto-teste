@@ -1,4 +1,4 @@
-﻿# Governance & Gates
+# Governance & Gates
 1. Dual-Track Agile: Discovery Track e Delivery Track correm em paralelo e se falam.
 2. Gates de Aprovação:
    - Gate 0 (Discovery): Entendemos o problema?

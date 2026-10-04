@@ -1,4 +1,4 @@
-﻿---
+---
 name: customer-researcher
 description: Especialista em dor do cliente, Jobs-to-be-Done (JTBD), necessidades e Willingness-to-pay.
 model: pro

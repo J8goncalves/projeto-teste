@@ -33,3 +33,8 @@ coverage/
 *.sw?
 .DS_Store
 Thumbs.db
+# Antigravity v4
+.agents/state/
+runs/CURRENT
+runs/*/usage.jsonl
+*.pyc

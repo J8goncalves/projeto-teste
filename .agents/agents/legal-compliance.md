@@ -1,4 +1,4 @@
-﻿---
+---
 name: legal-compliance
 description: Chief Risk & Legal Officer. Avalia brechas legais, LGPD/GDPR e proteção de IP.
 model: pro

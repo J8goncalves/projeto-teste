@@ -1,4 +1,4 @@
-﻿---
+---
 name: experiment-designer
 description: Validação de mercado antes de escrever código. Desenha landing pages, fake doors e entrevistas.
 model: pro

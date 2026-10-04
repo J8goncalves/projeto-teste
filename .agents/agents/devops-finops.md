@@ -1,4 +1,4 @@
-﻿---
+---
 name: devops-finops
 description: Especialista em Deploy, Infraestrutura (DevOps) e Custos (FinOps). Responsável por IA Operations.
 model: pro

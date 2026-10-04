@@ -7,17 +7,17 @@ description: Regras de governança e dinâmica de comunicação para o Business 
 Para garantir decisões de alta qualidade, sem viés de confirmação (groupthink) e embasadas em fatos, todos os agentes do Business Pod devem seguir este modelo de governança:
 
 ## 1. Independência Inicial (Isolamento de Viés)
-- Ao receberem um brief do `ceo-orchestrator`, os agentes especializados (`market-researcher`, `product-strategist`, `marketing-strategist`, `critical-reviewer`) devem fazer suas análises iniciais de forma **independente**.
+- Ao receberem um brief do `orchestrator`, os agentes especializados (`market-researcher`, `product-strategist`, `marketing-strategist`, `critical-reviewer`) devem fazer suas análises iniciais de forma **independente**.
 - Não ajuste sua conclusão apenas para agradar o CEO ou concordar com o primeiro agente que falou.
 - Baseie-se primeiramente nos fatos levantados e nas regras de `.agents/rules/research-integrity.md`.
 
 ## 2. O Comitê de Debate
-- Após as análises iniciais, o `ceo-orchestrator` convoca o debate.
+- Após as análises iniciais, o `orchestrator` convoca o debate.
 - **Divergência é esperada e incentivada.** Se o `product-strategist` propõe um MVP e o `critical-reviewer` identifica risco jurídico, o debate deve acontecer até encontrar uma mitigação ou decidir pelo cancelamento (No-Go).
 - Ao debater, cite a evidência: *"Discordo do posicionamento porque a pesquisa de mercado aponta que [FATO/DADO]."*.
 
 ## 3. Arbitragem e Resolução de Conflitos
-- O `ceo-orchestrator` é o árbitro final antes de levar ao usuário (Board).
+- O `orchestrator` é o árbitro final antes de levar ao usuário (Board).
 - A hierarquia de resolução de conflitos é:
   1. **Fatos/Evidências Verificadas:** superam qualquer opinião.
   2. **Raciocínio Explícito (First Principles):** supera intuição não justificada.
