@@ -126,3 +126,10 @@ Pendente (F8).
 
 ## Fase F4 (Andamento)
 - **F4-M1:** Registrada a decisão de usar namespace por papel (--source <papel>) e de criar o agente org-core posteriormente (passo humano F9-H4).\n- **F4-M3:** Criada a política de expiração em docs/setup/memanto-policy-org-core.yaml.\n- **F4-M4:** Copiada a skill memanto existente para docs/setup/vendor/memanto-memory-SKILL.md. Recomendação: remover a conexão (memanto connect remove antigravity) no passo F9-H5 para evitar gravações diretas ignorando o control plane.\n
+
+## Fases F3 (Conclusão) e F4 (Conclusão)
+- **Implementação dos Scripts do Control Plane:** Criados todos os scripts Python em `.agents/scripts/` (`ids.py`, `events.py`, `evidence.py`, `state.py`, `trace_lint.py`, `validate.py`, `budget.py`, `kill.py` e `memory_ops.py`), respeitando restrições e sem dependências externas.
+- **Testes Unitários:** Suite de testes com mock incluída em `.agents/scripts/tests/test_all.py`.
+- **F4-M2 e M5 (Verificação):** O `memory_ops.py` foi implementado em conformidade com as regras de subcomandos (`brief`, `propose`, `list`, `commit`, `export` e `status`).
+- **Fake Executable:** Criado `fake_memanto.py` para injetar comportamento controlado via variável `MEMANTO_BIN` durante os testes do memory wrapper.
+- Nenhuma operação de escrita foi propagada para o CLI real do Memanto; validação do `status` (`on-prem`) confirmada.
