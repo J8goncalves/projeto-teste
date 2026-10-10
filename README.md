@@ -1,42 +1,19 @@
-# Projeto Teste
+# Organização V5 — Base de validação de agentes
 
-Projeto estruturado para desenvolvimento colaborativo com agentes autônomos de software.
+Este é um overlay para o projeto-teste original. A proposta V5 corrige os principais *false greens* encontrados na V4 e implementa um control plane local, contratos JSON verificáveis, 19 perfis seniorizados, revisão independente, três ciclos máximos, critérios de QA e Security baseados em execução e camada de AI Memory com Memanto local.
 
-## 📁 Estrutura de Diretórios
+## Pré-requisito
+Python 3.11+ (`.venv\\Scripts\\python.exe` no Windows do projeto). Sem dependências Python adicionais para o plano de controle e seus testes.
 
-```text
-projeto-teste/
-│
-├── .agents/
-│   ├── agents/
-│   │   ├── product-manager.md  # Especificação do papel de Product Manager
-│   │   ├── architect.md        # Especificação do papel de Software Architect
-│   │   ├── developer.md        # Especificação do papel de Developer
-│   │   ├── qa.md               # Especificação do papel de Quality Assurance
-│   │   └── security.md         # Especificação do papel de Security Specialist
-│   │
-│   ├── rules/
-│   │   ├── project.md          # Diretrizes gerais de governança do projeto
-│   │   ├── coding.md           # Padrões de código e convenções de commit
-│   │   └── security.md         # Regras e políticas de segurança
-│   │
-│   └── workflows/
-│       └── feature-lifecycle.md# Ciclo de vida de ponta a ponta das demandas
-│
-├── docs/                       # Documentações técnicas e especificações
-├── src/                        # Código-fonte da aplicação
-├── tests/                      # Bateria de testes automatizados
-└── README.md                   # Documentação inicial do projeto
+## Teste inicial
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m org_v5.cli --help
+.\.venv\Scripts\python.exe -m org_v5.cli memory-status
 ```
 
-## 🤖 Papéis dos Agentes
-- **Product Manager**: Detalhamento de regras de negócio, histórias de usuário e critérios de aceitação.
-- **Architect**: Decisões técnicas, diagramas, padrões de projeto e ADRs.
-- **Developer**: Escrita de código limpo, testes unitários e implementação das funcionalidades.
-- **QA**: Validação dos critérios de aceitação, cenários de teste e garantia de qualidade.
-- **Security**: Revisão de segurança, prevenção a vulnerabilidades e proteção de dados/segredos.
+`memory-status` deve **falhar** até que a conexão on-prem ao Memanto seja realmente confirmada; não o desabilite para obter verde falso.
 
-## 🚀 Como Começar
-1. Configure seu ambiente de desenvolvimento conforme as instruções adicionais em `docs/`.
-2. Siga as convenções de desenvolvimento descritas em `.agents/rules/coding.md`.
-3. Valide o fluxo em `.agents/workflows/feature-lifecycle.md` para qualquer nova funcionalidade.
+Veja `docs/setup/INSTALL-AND-VERIFY.md`, `docs/architecture/v5-blueprint.md`, `docs/architecture/audit-v4-findings.md` e `docs/prompts/ANTIGRAVITY-BOOTSTRAP.md`.
+
+**Atenção:** copiar um overlay não instala integração do Antigravity nem torna prompts em controles de segurança. Use branch, testes e PR com proteção. Nenhum deploy produtivo automático.

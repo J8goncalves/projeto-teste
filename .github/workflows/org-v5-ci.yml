@@ -1,0 +1,28 @@
+name: org-v5-governance
+on:
+  push:
+    branches: ['feat/**', 'main']
+  pull_request:
+    branches: ['main']
+permissions:
+  contents: read
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate organizational structure
+        run: python .agents/scripts/org_check.py
+      - name: Run real unit/integration governance tests
+        run: python -m unittest discover -s tests -v
+      - name: Compile Python files
+        run: python -m compileall -q org_v5 tests
+      - name: Check retired V4 stubs fail closed
+        shell: bash
+        run: |
+          if python .agents/scripts/state.py transition --to BUILD; then echo 'V4 bypass' ; exit 1 ; fi
+          if python .agents/scripts/memory_ops.py brief --role qa; then echo 'V4 fake memory' ; exit 1 ; fi
