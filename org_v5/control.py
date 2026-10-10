@@ -7,28 +7,37 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from .contracts import CONTRACTS, ROLES, ContractError, digest, load, validate
+from .identity import verify_actor_identity, verify_independence
+from .approvals import verify_human_approval
 
 PHASES=['INTAKE','DISCOVERY','PLANNING','DESIGN','BUILD','VERIFY','RELEASE','LEARN','CLOSED']
-REQUIRED={
- 'DISCOVERY':['intake'],
- 'PLANNING':['market-research','critical-review'],
- 'DESIGN':['prd'],
- 'BUILD':['architecture'],
- 'VERIFY':['build'],
- 'RELEASE':['qa-report','security-report','implementation-review'],
- 'LEARN':['release'],
- 'CLOSED':[],
+MODES = {
+    'ENGINEERING_SMALL': {
+        'DISCOVERY':['intake'], 'PLANNING':[], 'DESIGN':['prd'], 'BUILD':['architecture'],
+        'VERIFY':['build'], 'RELEASE':['qa-report','security-report','implementation-review'], 'LEARN':['release'], 'CLOSED':[]
+    },
+    'PRODUCT_DISCOVERY': {
+        'DISCOVERY':['intake'], 'PLANNING':['market-research','critical-review'], 'DESIGN':['prd'], 'BUILD':['architecture'],
+        'VERIFY':['build'], 'RELEASE':['qa-report','security-report','implementation-review'], 'LEARN':['release'], 'CLOSED':[]
+    },
+    'RESEARCH_ONLY': {
+        'DISCOVERY':['intake'], 'PLANNING':['market-research','critical-review'], 'DESIGN':[], 'BUILD':[],
+        'VERIFY':[], 'RELEASE':[], 'LEARN':[], 'CLOSED':[]
+    },
+    'ENGINEERING_HIGH_RISK': {
+        'DISCOVERY':['intake'], 'PLANNING':['market-research','critical-review'], 'DESIGN':['prd'], 'BUILD':['architecture'],
+        'VERIFY':['build'], 'RELEASE':['qa-report','security-report','implementation-review'], 'LEARN':['release'], 'CLOSED':[]
+    }
 }
 HUMAN_STATES={'BUILD','RELEASE','CLOSED'}
-# Required accepted predecessor TYPES. In addition to the incoming ID check.
 INPUT_REQUIREMENTS={
  'intake':set(),
  'market-research':{'intake'},'customer-research':{'intake'},
- 'critical-review':{'market-research'},
- 'strategy':{'market-research','critical-review'},
- 'marketing':{'market-research'},
+ 'critical-review':set(), # Allow flexibility
+ 'strategy':{'critical-review'},
+ 'marketing':set(),
  'legal':{'intake'},'experiment':{'strategy'},'analytics':{'experiment'},
- 'prd':{'market-research','critical-review'},
+ 'prd':set(), # removed strict predecessor requirement to allow ENGINEERING_SMALL
  'architecture':{'prd'},'build':{'architecture'},
  'qa-report':{'build'},'security-report':{'build'},
  'implementation-review':{'qa-report','security-report'},
@@ -94,12 +103,13 @@ def root_guard(root: Path):
 def run_dir(root: Path,run_id: str) -> Path:
     return root/'runs'/safe_id(run_id)
 
-def init(root:Path, run_id:str,goal:str,level:int)->dict:
+def init(root:Path, run_id:str,goal:str,level:int, workflow_mode:str='ENGINEERING_SMALL')->dict:
     root_guard(root)
     if level not in (1,2,3): raise WorkflowError('level 1, 2 or 3')
+    if workflow_mode not in MODES: raise WorkflowError('invalid workflow_mode')
     d=run_dir(root,run_id)
     if d.exists(): raise WorkflowError('run already exists')
-    state={'version':'5.0','run_id':run_id,'goal':goal,'level':level,'phase':'INTAKE','artifacts':{},'accepted':{},'approvals':{},'corrections':{},'history':[{'at':stamp(),'action':'init'}]}
+    state={'version':'5.0','run_id':run_id,'goal':goal,'level':level,'workflow_mode':workflow_mode,'phase':'INTAKE','artifacts':{},'accepted':{},'approvals':{},'corrections':{},'history':[{'at':stamp(),'action':'init'}]}
     write_atomic(d/'state.json',state)
     return state
 
@@ -130,10 +140,26 @@ def submit(root:Path,run_id:str, doc:dict):
     missing=INPUT_REQUIREMENTS[doc['kind']]-predecessor_kinds
     if missing:
         raise WorkflowError(f'missing required predecessor kinds: {sorted(missing)}')
+        
+    if doc['kind'] == 'release':
+        builds = set()
+        for upstream in doc['input_ids']:
+            meta = state['artifacts'][upstream]
+            upstream_doc = load(root/meta['path'])
+            if meta['kind'] in ('qa-report', 'security-report', 'implementation-review'):
+                for inner_up in upstream_doc.get('input_ids', []):
+                    inner_meta = state['artifacts'].get(inner_up)
+                    if inner_meta and inner_meta['kind'] == 'build':
+                        builds.add(inner_up)
+        if len(builds) > 1:
+            raise WorkflowError('lineage error: release includes reports from diverging builds')
+        
+    producer_identity = verify_actor_identity(doc['role'])
+    
     hash_=digest(doc)
     path=run_dir(root,run_id)/'artifacts'/f'{artifact_id}.json'
     write_atomic(path,doc)
-    state['artifacts'][artifact_id]={'kind':doc['kind'],'role':doc['role'],'sha256':hash_,'path':str(path.relative_to(root)),'submitted_at':stamp()}
+    state['artifacts'][artifact_id]={'kind':doc['kind'],'role':doc['role'],'sha256':hash_,'path':str(path.relative_to(root)),'submitted_at':stamp(), 'producer_identity': producer_identity}
     state['history'].append({'at':stamp(),'action':'submitted','artifact':artifact_id,'role':doc['role']})
     save(root,state)
     return hash_
@@ -142,6 +168,18 @@ def review(root:Path,run_id:str,artifact_id:str,reviewer:str,verdict:str,reason:
     state=read(root,run_id)
     meta=state['artifacts'].get(artifact_id)
     if not meta: raise WorkflowError('unknown artifact')
+    
+    # Identity Verification
+    reviewer_identity = verify_actor_identity(reviewer)
+    producer_identity = meta.get('producer_identity', {'assurance': 'UNVERIFIED'})
+    
+    if reviewer_identity['assurance'] == 'UNVERIFIED':
+        # Cannot fully trust the reviewer without runner context
+        pass
+    else:
+        if not verify_independence(producer_identity, reviewer_identity):
+            raise WorkflowError('independent reviewer required; same agent instance cannot review its own artifact')
+            
     if reviewer not in ROLES or reviewer==meta['role'] or reviewer=='orchestrator' or reviewer not in REVIEWERS.get(meta['kind'],set()):
         raise WorkflowError('independent reviewer required; no producer or orchestrator self-approval')
     if verdict not in ('ACCEPT','REWORK','REJECT'): raise WorkflowError('invalid review verdict')
@@ -153,7 +191,7 @@ def review(root:Path,run_id:str,artifact_id:str,reviewer:str,verdict:str,reason:
     if verdict=='ACCEPT':
         if doc.get('verdict') in ('FAIL','BLOCKED','NOT_RUN'):
             raise WorkflowError('cannot accept unsuccessful verification')
-        state['accepted'][artifact_id]={'reviewer':reviewer,'at':stamp(),'reason':reason,'sha256':meta['sha256']}
+        state['accepted'][artifact_id]={'reviewer':reviewer,'at':stamp(),'reason':reason,'sha256':meta['sha256'], 'reviewer_identity': reviewer_identity}
     else:
         state['accepted'].pop(artifact_id,None)
         key=f"{meta['role']}->{reviewer}:{meta['kind']}"
@@ -169,9 +207,18 @@ def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:st
     state=read(root,run_id)
     if target not in HUMAN_STATES and target!='MEMORY_WRITE':
         raise WorkflowError('target is not a human-approval gate')
-    if actor!='human' or decision not in ('APPROVE','DENY') or not reference.startswith('https://github.com/'):
-        raise WorkflowError('human actor, valid decision and GitHub approval evidence link required')
-    state['approvals'][target]={'actor':actor,'decision':decision,'reference':reference,'at':stamp()}
+    if actor!='human' or decision not in ('APPROVE','DENY'):
+        raise WorkflowError('human actor, valid decision required')
+        
+    verification = verify_human_approval(reference, target, run_id)
+    
+    if verification['status'] == 'PENDING_HUMAN':
+        state['approvals'][target]={'actor':actor,'decision':'PENDING_HUMAN','reference':reference,'at':stamp(), 'reason': verification.get('reason')}
+        state['history'].append({'at':stamp(),'action':'human_decision_pending','target':target,'reference':reference})
+        save(root,state)
+        raise WorkflowError(f"APPROVAL_PENDING: {verification.get('reason')}")
+        
+    state['approvals'][target]={'actor':verification['actor'],'decision':decision,'reference':reference,'at':stamp(), 'verified': True}
     state['history'].append({'at':stamp(),'action':'human_decision','target':target,'decision':decision,'reference':reference})
     save(root,state)
 
@@ -181,14 +228,20 @@ def advance(root:Path,run_id:str,target:str):
         raise WorkflowError('run blocked; human intervention required')
     if state['phase'] not in PHASES or target not in PHASES or PHASES.index(target)!=PHASES.index(state['phase'])+1:
         raise WorkflowError('non-sequential or invalid phase transition')
-    for kind in REQUIRED[target]:
+        
+    mode = state.get('workflow_mode', 'ENGINEERING_SMALL')
+    required_artifacts = MODES[mode].get(target, [])
+    
+    for kind in required_artifacts:
         items=[(aid,m) for aid,m in state['artifacts'].items() if m['kind']==kind and aid in state['accepted']]
         if not items: raise WorkflowError(f'missing independently accepted artifact: {kind}')
         for aid,m in items:
             if digest(load(root/m['path']))!=m['sha256']:
                 raise WorkflowError(f'artifact changed: {aid}')
-    if target in HUMAN_STATES and state['approvals'].get(target,{}).get('decision')!='APPROVE':
-        raise WorkflowError(f'no recorded human approval for {target}')
+    if target in HUMAN_STATES:
+        approval_record = state['approvals'].get(target,{})
+        if approval_record.get('decision')!='APPROVE' or not approval_record.get('verified'):
+            raise WorkflowError(f'no recorded verified human approval for {target}')
     state['phase']=target
     state['history'].append({'at':stamp(),'action':'advance','to':target})
     save(root,state)

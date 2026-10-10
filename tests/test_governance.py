@@ -70,7 +70,8 @@ class GovernanceTests(unittest.TestCase):
   self.seed_build_dependencies()
   s=control.read(self.root,'RUN-TEST');s['phase']='DESIGN';control.save(self.root,s)
   with self.assertRaises(control.WorkflowError):control.advance(self.root,'RUN-TEST','BUILD')
-  control.approval(self.root,'RUN-TEST','BUILD','APPROVE','human','https://github.com/x/y/issues/1')
+  with patch('org_v5.control.verify_human_approval', return_value={'status':'APPROVED', 'actor':'human', 'verified_at':'now'}):
+      control.approval(self.root,'RUN-TEST','BUILD','APPROVE','human','https://github.com/x/y/issues/1')
   self.assertEqual(control.advance(self.root,'RUN-TEST','BUILD'),'BUILD')
  def test_kill_switch_denies_writes(self):
   (self.root/'.agents/state').mkdir(parents=True)

@@ -1,0 +1,11 @@
+{
+  "id": "MC-EXEMPLO-001",
+  "role": "memory-curator",
+  "type": "learning",
+  "text": "Os relatórios de teste E2E exigem interação observável em navegador e saída verificável, nunca apenas mocks de função.",
+  "tags": ["evid-001", "qa", "ttl-2y"],
+  "confidence": 0.82,
+  "provenance": "validated",
+  "source_ref": "docs/architecture/v5-blueprint.md",
+  "reason": "Reduz regressão de falsos positivos em execuções futuras."
+}

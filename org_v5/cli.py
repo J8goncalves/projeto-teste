@@ -11,7 +11,7 @@ def main(argv=None):
  p.add_argument('--root',default='.',help='project root (contains runs/)')
  sub=p.add_subparsers(dest='action',required=True)
  def addrun(parser): parser.add_argument('--run',required=True)
- x=sub.add_parser('init');addrun(x);x.add_argument('--goal',required=True);x.add_argument('--level',type=int,required=True)
+ x=sub.add_parser('init');addrun(x);x.add_argument('--goal',required=True);x.add_argument('--level',type=int,required=True);x.add_argument('--mode',default='ENGINEERING_SMALL')
  x=sub.add_parser('status');addrun(x)
  x=sub.add_parser('validate');x.add_argument('file')
  x=sub.add_parser('submit');addrun(x);x.add_argument('file')
@@ -27,7 +27,7 @@ def main(argv=None):
  x=sub.add_parser('memory-promote');addrun(x);x.add_argument('--candidate',required=True);x.add_argument('--reference',required=True)
  a=p.parse_args(argv);root=Path(a.root).resolve()
  try:
-  if a.action=='init': result=control.init(root,a.run,a.goal,a.level)
+  if a.action=='init': result=control.init(root,a.run,a.goal,a.level,a.mode)
   elif a.action=='status': result=control.read(root,a.run)
   elif a.action=='validate':
    errors=validate(load(Path(a.file)))
