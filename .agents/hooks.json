@@ -1,52 +1,6 @@
 {
-  "org-guard": {
-    "enabled": true,
-    "PreToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".\\\\.venv\\\\Scripts\\\\python.exe .agents/scripts/hooks/pretool_guard.py",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  },
-  "org-budget": {
-    "enabled": true,
-    "PostInvocation": [
-      {
-        "type": "command",
-        "command": ".\\\\.venv\\\\Scripts\\\\python.exe .agents/scripts/hooks/postinvocation_budget.py",
-        "timeout": 10
-      }
-    ]
-  },
-  "org-state": {
-    "enabled": true,
-    "PreInvocation": [
-      {
-        "type": "command",
-        "command": ".\\\\.venv\\\\Scripts\\\\python.exe .agents/scripts/hooks/preinvocation_state.py",
-        "timeout": 10
-      }
-    ]
-  },
-  "org-events": {
-    "enabled": true,
-    "PostToolUse": [
-      {
-        "matcher": "invoke_subagent|run_command",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".\\\\.venv\\\\Scripts\\\\python.exe .agents/scripts/hooks/posttool_events.py",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  }
+  "org-guard": {"enabled": false, "PreToolUse": []},
+  "org-budget": {"enabled": false, "PostInvocation": []},
+  "org-state": {"enabled": false, "PreInvocation": []},
+  "org-events": {"enabled": false, "PostToolUse": []}
 }

@@ -1,0 +1,103 @@
+{
+  "id": "qa-001",
+  "version": "5.0",
+  "status": "submitted",
+  "role": "qa",
+  "kind": "qa-report",
+  "run_id": "run-pilot-v5-002",
+  "summary": "QA report for Task Manager UI",
+  "input_ids": [
+    "prd-001",
+    "build-001"
+  ],
+  "evidence_refs": [
+    "runs/run-pilot-v5-002/logs/initial.png"
+  ],
+  "verdict": "PASS",
+  "execution": {
+    "real_execution": true,
+    "command": "interactive session via Chrome DevTools MCP",
+    "exit_code": 0,
+    "output_ref": "runs/run-pilot-v5-002/logs/initial.png",
+    "output_sha256": "320a9f914697f0bae660594056cdb7e550984610bc594b1438b9879833181037"
+  },
+  "sections": {
+    "acceptance_mapping": [
+      {
+        "id": "AC1",
+        "status": "PASS",
+        "evidence": "runs/run-pilot-v5-002/logs/task_added.png"
+      },
+      {
+        "id": "AC2",
+        "status": "PASS",
+        "evidence": "runs/run-pilot-v5-002/logs/error.png"
+      },
+      {
+        "id": "AC3",
+        "status": "PASS",
+        "evidence": "runs/run-pilot-v5-002/logs/task_done.png"
+      },
+      {
+        "id": "AC4",
+        "status": "PASS",
+        "evidence": "runs/run-pilot-v5-002/logs/task_deleted.png"
+      }
+    ],
+    "environment": {
+      "method": "browser-interactive",
+      "os": "windows",
+      "browser": "chrome"
+    },
+    "method": "browser-interactive",
+    "interactions": [
+      {
+        "target": "Add Task Button without text",
+        "action": "click without input",
+        "expected": "Error message Title cannot be empty is shown",
+        "observed": "Error message appeared correctly",
+        "evidence_ref": "runs/run-pilot-v5-002/logs/error.png"
+      },
+      {
+        "target": "#taskInput",
+        "action": "fill 'Buy groceries' and click Add Task",
+        "expected": "Task is added to the list",
+        "observed": "Task was successfully added",
+        "evidence_ref": "runs/run-pilot-v5-002/logs/task_added.png"
+      },
+      {
+        "target": "Mark Done button",
+        "action": "click",
+        "expected": "Task gets strikethrough, button changes to Mark Pending",
+        "observed": "Task marked done, button updated",
+        "evidence_ref": "runs/run-pilot-v5-002/logs/task_done.png"
+      },
+      {
+        "target": "Mark Pending button",
+        "action": "click",
+        "expected": "Task is pending again, button changes to Mark Done",
+        "observed": "Task marked pending, button updated",
+        "evidence_ref": "runs/run-pilot-v5-002/logs/task_added.png"
+      },
+      {
+        "target": "Delete button",
+        "action": "click",
+        "expected": "Confirmation prompt appears, task deleted after acceptance",
+        "observed": "Prompt appeared, dialog was accepted, task was removed from list",
+        "evidence_ref": "runs/run-pilot-v5-002/logs/task_deleted.png"
+      }
+    ],
+    "observations": "All functional requirements work correctly. State transitions (pending to done and vice-versa) function properly. Deletion prompt effectively stops accidental removals.",
+    "console": [
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "evidence": [
+      "runs/run-pilot-v5-002/logs/initial.png",
+      "runs/run-pilot-v5-002/logs/error.png",
+      "runs/run-pilot-v5-002/logs/task_added.png",
+      "runs/run-pilot-v5-002/logs/task_done.png",
+      "runs/run-pilot-v5-002/logs/task_deleted.png"
+    ],
+    "limitations": "Testing was performed exclusively on Chrome version 155 via Puppeteer Chrome DevTools Protocol."
+  }
+}

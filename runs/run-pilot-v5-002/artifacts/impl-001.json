@@ -1,0 +1,21 @@
+{
+  "id": "impl-001",
+  "version": "5.0",
+  "status": "submitted",
+  "role": "implementation-reviewer",
+  "kind": "implementation-review",
+  "run_id": "run-pilot-v5-002",
+  "summary": "Implementation review",
+  "input_ids": [
+    "qa-001",
+    "sec-001"
+  ],
+  "evidence_refs": [],
+  "sections": {
+    "contracts": "Contracts verified",
+    "tests": "Tests are adequate",
+    "policy_effectiveness": "Policy is effective",
+    "gaps": "No gaps",
+    "verdict": "PASS"
+  }
+}

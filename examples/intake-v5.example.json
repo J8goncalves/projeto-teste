@@ -1,0 +1,18 @@
+{
+  "id": "ART-INTAKE-001",
+  "run_id": "RUN-PILOT-001",
+  "version": "5.0",
+  "kind": "intake",
+  "role": "orchestrator",
+  "status": "submitted",
+  "summary": "Validar motor organizacional sem deploy em produção.",
+  "input_ids": [],
+  "evidence_refs": ["docs/architecture/v5-blueprint.md"],
+  "sections": {
+    "goal": "Executar o primeiro piloto verificável de governança multiagente.",
+    "scope": "Handoffs, verificações, memória e micro-UI em sandbox.",
+    "constraints": "Sem deploy, sem segredos, sem compras, sem autoaprovação.",
+    "risk_level": "2",
+    "definition_of_success": "Testes de governança, UI interativa real, revisão de segurança e memória real ou BLOCKED."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "mem-pilot-001",
+  "role": "orchestrator",
+  "type": "fact",
+  "text": "O repositório projeto-teste iniciou a Fase 3 do piloto de arquitetura V5 com Memanto no modo CONNECTED_ON_PREM.",
+  "tags": ["dec-pilot-start", "ttl-30d"],
+  "confidence": 1.0,
+  "provenance": "Orchestrator prompt authorization",
+  "source_ref": "runs/run-pilot-v5-002/logs/authorization.md",
+  "reason": "Registrar status inicial de homologação do L2 para cumprir requisito 1 da Fase 3."
+}

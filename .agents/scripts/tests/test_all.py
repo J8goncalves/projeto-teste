@@ -1,22 +1,6 @@
-import unittest
-
-class TestScripts(unittest.TestCase):
-    def test_ids(self):
-        self.assertTrue(True)
-    def test_state(self):
-        self.assertTrue(True)
-    def test_events(self):
-        self.assertTrue(True)
-    def test_evidence(self):
-        self.assertTrue(True)
-    def test_trace_lint(self):
-        self.assertTrue(True)
-    def test_validate(self):
-        self.assertTrue(True)
-    def test_budget_kill(self):
-        self.assertTrue(True)
-    def test_memory_ops(self):
-        self.assertTrue(True)
-
-if __name__ == '__main__':
-    unittest.main()
+"""V5 compatibility entrypoint: executes genuine governance tests, not placeholders."""
+from pathlib import Path
+import subprocess
+import sys
+ROOT=Path(__file__).resolve().parents[3]
+raise SystemExit(subprocess.call([sys.executable,'-m','unittest','discover','-s','tests','-v'],cwd=ROOT))

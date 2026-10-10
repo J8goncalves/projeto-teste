@@ -1,5 +1,5 @@
 # Arquitetura da Organização
-**Versão V4, 2026-10-04**
+**Versão V4**
 
 ## Visão Geral V4
 

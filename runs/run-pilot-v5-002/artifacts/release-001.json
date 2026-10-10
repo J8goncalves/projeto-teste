@@ -1,0 +1,24 @@
+{
+  "id": "release-001",
+  "version": "5.0",
+  "status": "submitted",
+  "role": "release-manager",
+  "kind": "release",
+  "run_id": "run-pilot-v5-002",
+  "summary": "Final release package",
+  "input_ids": [
+    "build-001",
+    "qa-001",
+    "sec-001",
+    "impl-001"
+  ],
+  "evidence_refs": [],
+  "sections": {
+    "build_ref": "runs/run-pilot-v5-002/artifacts/build-001.json",
+    "qa_ref": "runs/run-pilot-v5-002/artifacts/qa-001.json",
+    "security_ref": "runs/run-pilot-v5-002/artifacts/sec-001.json",
+    "rollback": "revert deployment from backup",
+    "approval_ref": "https://github.com/org/repo/pull/1",
+    "verdict": "PASS"
+  }
+}

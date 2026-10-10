@@ -1,0 +1,23 @@
+{
+  "version": "5.0",
+  "status": "submitted",
+  "role": "architect",
+  "kind": "architecture",
+  "run_id": "run-pilot-v5-002",
+  "id": "arch-001",
+  "summary": "Architecture for local task manager web app",
+  "input_ids": [
+    "prd-001"
+  ],
+  "evidence_refs": [],
+  "sections": {
+    "requirements": "Provide a local task manager web app (HTML/JS) without backend, using localStorage.",
+    "options": "1. Vanilla HTML/CSS/JS with localStorage. 2. React or Vue framework with localStorage.",
+    "simplest_viable": "Vanilla HTML/CSS/JS with localStorage. No build tools, no frameworks, zero dependencies.",
+    "tradeoffs": "Vanilla JS is simpler but may become harder to maintain if complexity grows. Frameworks offer maintainability but violate the simplest_viable constraint due to build overhead.",
+    "financial_feasibility": "$0 operational cost. Runs entirely locally on the client's browser.",
+    "security": "Data never leaves the client device. Primary risk is XSS, which must be mitigated by properly escaping task input before rendering in the DOM.",
+    "adr": "ADR-001: Use Vanilla HTML/JS and localStorage to adhere to strict simplicity and zero backend constraints.",
+    "risks": "Data loss if user clears browser storage. Storage quota limitations (~5MB), though unlikely to be reached for simple text tasks."
+  }
+}
