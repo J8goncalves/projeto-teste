@@ -232,5 +232,29 @@ class V51GovernanceTests(unittest.TestCase):
             control.review(self.root, 'RUN-TEST', 'S003', 'implementation-reviewer', 'ACCEPT', 'reviewed')
         self.assertIn('execution output SHA-256 absent/mismatch', str(ctx.exception))
 
+    def test_T23_tampered_resume_package_rejected(self):
+        self.seed_build_dependencies()
+        pkg = control.resume_package(self.root, 'RUN-TEST')
+        self.assertEqual(pkg['schema'], 'RESUME_PACKAGE_v5')
+        
+        # Tamper with an accepted artifact on disk
+        target_art = pkg['accepted_artifacts'][0]
+        file_path = self.root / target_art['path']
+        original_bytes = file_path.read_bytes()
+        file_path.write_bytes(b'{"tampered": true}')
+        
+        # Validation by the successor agent: recalculate sha256 and assert mismatch
+        mismatches = []
+        for a in pkg['accepted_artifacts']:
+            computed = control.digest(control.load(self.root / a['path']))
+            if computed != a['sha256']:
+                mismatches.append(a['id'])
+                
+        self.assertIn(target_art['id'], mismatches)
+        
+        # Restore
+        file_path.write_bytes(original_bytes)
+
 if __name__ == '__main__':
     unittest.main()
+

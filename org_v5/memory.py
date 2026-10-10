@@ -16,9 +16,10 @@ SENSITIVE=[r'AKIA[0-9A-Z]{16}',r'ghp_[A-Za-z0-9]{20,}',r'-----BEGIN .*PRIVATE KE
 TYPES={'fact','decision','learning','error','instruction','commitment','goal'}
 
 def memanto(args:list[str], timeout:int=15)->str:
-    executable=os.environ.get('MEMANTO_BIN','memanto')
+    import sys
+    cmd = os.environ.get('MEMANTO_BIN', f'{sys.executable} -m memanto.cli.main').split()
     try:
-        result=subprocess.run([executable]+args,text=True,capture_output=True,timeout=timeout,check=False,encoding='utf-8')
+        result=subprocess.run(cmd+args,text=True,capture_output=True,timeout=timeout,check=False,encoding='utf-8')
     except (FileNotFoundError,subprocess.TimeoutExpired) as exc:
         raise WorkflowError('AI Memory offline or timed out: '+str(exc)) from exc
     if result.returncode!=0:

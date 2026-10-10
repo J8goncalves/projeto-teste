@@ -132,7 +132,13 @@
       "sha256": "9a86ae18209def48a80ca2a1fc6f6ce7bf64b1daff45a298755ed78864590fe6"
     }
   },
-  "approvals": {},
+  "approvals": {
+    "MEMORY_WRITE": {
+      "decision": "APPROVE",
+      "reference": "mock_ref",
+      "verified": true
+    }
+  },
   "corrections": {},
   "history": [
     {

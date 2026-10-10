@@ -39,6 +39,10 @@ def verify_human_approval(reference: str, expected_target: str, expected_run_id:
             # Look for a comment that contains the approval payload
             for comment in comments:
                 body = comment.get('body', '')
+                author_assoc = comment.get('author_association', '')
+                if author_assoc not in ('OWNER', 'MEMBER', 'COLLABORATOR'):
+                    continue
+                    
                 if f"APPROVE_TARGET: {expected_target}" in body and f"RUN_ID: {expected_run_id}" in body:
                     if expected_sha and f"SHA: {expected_sha}" not in body:
                         continue
@@ -46,11 +50,12 @@ def verify_human_approval(reference: str, expected_target: str, expected_run_id:
                     return {
                         'status': 'APPROVED',
                         'actor': comment['user']['login'],
+                        'author_association': author_assoc,
                         'verified_at': stamp(),
                         'comment_url': comment['html_url']
                     }
             
-            return {'status': 'PENDING_HUMAN', 'reason': 'No matching approval comment found.'}
+            return {'status': 'PENDING_HUMAN', 'reason': 'No matching approval comment from authorized collaborator found.'}
             
     except Exception as e:
         return {'status': 'PENDING_HUMAN', 'reason': f'GitHub API check failed: {str(e)}'}
