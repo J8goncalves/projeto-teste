@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Task Manager</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; }
+        .task-list { list-style: none; padding: 0; }
+        .task-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid #ccc; }
+        .task-item.done span.title { text-decoration: line-through; color: #888; }
+        .error { color: red; display: none; }
+        button { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Task Manager</h1>
+    <div>
+        <input type="text" id="taskInput" placeholder="New task title">
+        <button id="addBtn">Add Task</button>
+        <div id="errorMsg" class="error">Title cannot be empty!</div>
+    </div>
+    <ul id="taskList" class="task-list"></ul>
+    <script src="app.js"></script>
+</body>
+</html>
