@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "backend_exigido": "on-prem",
-  "agente_memanto": "org-core",
+  "backend_exigido": "ai-memory-onprem",
+  "motor_memoria": "akitaonrails/ai-memory",
   "tipos_permitidos": ["decision", "learning", "error", "fact", "instruction", "commitment", "goal"],
   "tipos_nao_usar": ["observation", "artifact", "event", "context", "preference", "relationship"],
   "mapeamento": {

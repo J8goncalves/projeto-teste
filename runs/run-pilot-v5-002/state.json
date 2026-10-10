@@ -134,9 +134,8 @@
   },
   "approvals": {
     "MEMORY_WRITE": {
-      "decision": "APPROVE",
-      "reference": "mock_ref",
-      "verified": true
+      "decision": "DENIED",
+      "reference": "ref-none"
     }
   },
   "corrections": {},
