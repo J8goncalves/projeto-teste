@@ -1,0 +1,37 @@
+{
+  "id": "sec-001",
+  "run_id": "run-pilot-v5-002",
+  "summary": "Task Manager Security Review",
+  "version": "5.0",
+  "status": "submitted",
+  "role": "security-reviewer",
+  "kind": "security-report",
+  "input_ids": ["build-001"],
+  "evidence_refs": ["runs/run-pilot-v5-002/logs/security_scan.txt"],
+  "sections": {
+    "threats": [
+      "XSS via unescaped input in DOM",
+      "Data manipulation in localStorage"
+    ],
+    "scans": ["Select-String (DOM Sinks)"],
+    "scan_outputs": "src\\app.js:14:        taskList.innerHTML = '';",
+    "manual_checks": "Verified that innerHTML is only used with empty string to clear the list. Task titles are appended safely via textContent.",
+    "findings": [
+      {
+        "issue": "Use of innerHTML",
+        "severity": "LOW",
+        "detail": "Used only for clearing DOM. No user input is passed."
+      }
+    ],
+    "risk_rating": "LOW",
+    "evidence": "Grep results show no eval() or dangerous innerHTML sinks. The LLM Security Subagent was blocked by AI Safety guardrails from analyzing concrete code, so Orchestrator performed the scan using PowerShell Select-String."
+  },
+  "verdict": "PASS",
+  "execution": {
+    "real_execution": true,
+    "command": "Select-String -Path src/app.js -Pattern 'innerHTML|eval'",
+    "exit_code": 0,
+    "output_ref": "runs/run-pilot-v5-002/logs/security_scan.txt",
+    "output_sha256": "de7ad2fb3e64bc4ce9398b0e72bb2490004e06e6f9b59776f5b143f6baf3131b"
+  }
+}

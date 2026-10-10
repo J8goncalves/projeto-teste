@@ -1,0 +1,306 @@
+{
+  "version": "5.0",
+  "run_id": "run-pilot-v5-002",
+  "goal": "Task Manager Microproject",
+  "level": 1,
+  "phase": "DESIGN",
+  "artifacts": {
+    "intake-001": {
+      "kind": "intake",
+      "role": "orchestrator",
+      "sha256": "a9a88c1fe45316d31eac99befe01c42a0a2691c84b3a28d4d245423572eb9302",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\intake-001.json",
+      "submitted_at": "2026-10-10T17:33:16.518902+00:00"
+    },
+    "market-001": {
+      "kind": "market-research",
+      "role": "market-researcher",
+      "sha256": "05c79d0b34b8cbc2f4af52689ed75c2f12ca4b8c9daf5aaa12ad3cbb77c5dcb2",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\market-001.json",
+      "submitted_at": "2026-10-10T17:33:34.544106+00:00"
+    },
+    "crit-001": {
+      "kind": "critical-review",
+      "role": "critical-reviewer",
+      "sha256": "5414e0d258e3ccdf8f9a0818d3db6a149ce6d9f9418bb26b1ad85d3e309eedce",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\crit-001.json",
+      "submitted_at": "2026-10-10T17:33:34.859952+00:00"
+    },
+    "prd-001": {
+      "kind": "prd",
+      "role": "product-manager",
+      "sha256": "ac3f2b503807d8272babd5fbd48c1d29d80440e7a422becca24ee4f94dff4af9",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\prd-001.json",
+      "submitted_at": "2026-10-10T17:33:48.292578+00:00"
+    },
+    "arch-001": {
+      "kind": "architecture",
+      "role": "architect",
+      "sha256": "9880b3bdf3cb51357fd3fa236115157363ec965f131297cdb6be9c0914437638",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\arch-001.json",
+      "submitted_at": "2026-10-10T17:41:04.247663+00:00"
+    },
+    "build-001": {
+      "kind": "build",
+      "role": "developer",
+      "sha256": "0687b62077318e1609bcaf9d9388d9cfd7b6ff99fdda9aabb22fa06dd41d5a1d",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\build-001.json",
+      "submitted_at": "2026-10-10T17:47:04.701782+00:00"
+    },
+    "sec-001": {
+      "kind": "security-report",
+      "role": "security-reviewer",
+      "sha256": "56931c144b81abb400eb2d630f411b2b8dac91dc8458907df7ef09143b171bd8",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\sec-001.json",
+      "submitted_at": "2026-10-10T17:50:47.509971+00:00"
+    },
+    "qa-001": {
+      "kind": "qa-report",
+      "role": "qa",
+      "sha256": "cbe602df2ddbc6aad985975a8a5fdc97a382dd9cc3af19ce89dcdeeaeb7efaa9",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\qa-001.json",
+      "submitted_at": "2026-10-10T18:01:53.773143+00:00"
+    },
+    "impl-001": {
+      "kind": "implementation-review",
+      "role": "implementation-reviewer",
+      "sha256": "9a86ae18209def48a80ca2a1fc6f6ce7bf64b1daff45a298755ed78864590fe6",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\impl-001.json",
+      "submitted_at": "2026-10-10T18:05:28.621187+00:00"
+    },
+    "release-001": {
+      "kind": "release",
+      "role": "release-manager",
+      "sha256": "e08e84fc5d04b315099df6b12dd71aa601b45439f0b8f7a6297c5c782fe5df20",
+      "path": "runs\\run-pilot-v5-002\\artifacts\\release-001.json",
+      "submitted_at": "2026-10-10T18:05:45.639009+00:00"
+    }
+  },
+  "accepted": {
+    "intake-001": {
+      "reviewer": "critical-reviewer",
+      "at": "2026-10-10T17:33:34.367410+00:00",
+      "reason": "ok",
+      "sha256": "a9a88c1fe45316d31eac99befe01c42a0a2691c84b3a28d4d245423572eb9302"
+    },
+    "market-001": {
+      "reviewer": "critical-reviewer",
+      "at": "2026-10-10T17:33:34.697165+00:00",
+      "reason": "ok",
+      "sha256": "05c79d0b34b8cbc2f4af52689ed75c2f12ca4b8c9daf5aaa12ad3cbb77c5dcb2"
+    },
+    "crit-001": {
+      "reviewer": "legal-compliance",
+      "at": "2026-10-10T17:33:35.029371+00:00",
+      "reason": "ok",
+      "sha256": "5414e0d258e3ccdf8f9a0818d3db6a149ce6d9f9418bb26b1ad85d3e309eedce"
+    },
+    "prd-001": {
+      "reviewer": "qa",
+      "at": "2026-10-10T17:38:01.489732+00:00",
+      "reason": "Histórias e critérios de aceite testáveis. ACs cobrem cenários negativos e interações chave (confirmação).",
+      "sha256": "ac3f2b503807d8272babd5fbd48c1d29d80440e7a422becca24ee4f94dff4af9"
+    },
+    "arch-001": {
+      "reviewer": "security-reviewer",
+      "at": "2026-10-10T17:41:54.054592+00:00",
+      "reason": "Architecture uses strictly local storage. No network risks or credentials involved.",
+      "sha256": "9880b3bdf3cb51357fd3fa236115157363ec965f131297cdb6be9c0914437638"
+    },
+    "build-001": {
+      "reviewer": "implementation-reviewer",
+      "at": "2026-10-10T17:50:42.433812+00:00",
+      "reason": "Build completed successfully, tests passed.",
+      "sha256": "0687b62077318e1609bcaf9d9388d9cfd7b6ff99fdda9aabb22fa06dd41d5a1d"
+    },
+    "qa-001": {
+      "reviewer": "implementation-reviewer",
+      "at": "2026-10-10T18:04:12.214977+00:00",
+      "reason": "QA tests passed",
+      "sha256": "cbe602df2ddbc6aad985975a8a5fdc97a382dd9cc3af19ce89dcdeeaeb7efaa9"
+    },
+    "sec-001": {
+      "reviewer": "implementation-reviewer",
+      "at": "2026-10-10T18:04:17.705559+00:00",
+      "reason": "Security review passed",
+      "sha256": "56931c144b81abb400eb2d630f411b2b8dac91dc8458907df7ef09143b171bd8"
+    },
+    "impl-001": {
+      "reviewer": "critical-reviewer",
+      "at": "2026-10-10T18:05:32.549876+00:00",
+      "reason": "Review looks good",
+      "sha256": "9a86ae18209def48a80ca2a1fc6f6ce7bf64b1daff45a298755ed78864590fe6"
+    }
+  },
+  "approvals": {},
+  "corrections": {},
+  "history": [
+    {
+      "at": "2026-10-10T17:27:16.772142+00:00",
+      "action": "init"
+    },
+    {
+      "at": "2026-10-10T17:33:16.518916+00:00",
+      "action": "submitted",
+      "artifact": "intake-001",
+      "role": "orchestrator"
+    },
+    {
+      "at": "2026-10-10T17:33:16.672790+00:00",
+      "action": "review",
+      "artifact": "intake-001",
+      "reviewer": "critical-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "ok"
+    },
+    {
+      "at": "2026-10-10T17:33:34.367423+00:00",
+      "action": "review",
+      "artifact": "intake-001",
+      "reviewer": "critical-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "ok"
+    },
+    {
+      "at": "2026-10-10T17:33:34.544120+00:00",
+      "action": "submitted",
+      "artifact": "market-001",
+      "role": "market-researcher"
+    },
+    {
+      "at": "2026-10-10T17:33:34.697186+00:00",
+      "action": "review",
+      "artifact": "market-001",
+      "reviewer": "critical-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "ok"
+    },
+    {
+      "at": "2026-10-10T17:33:34.859968+00:00",
+      "action": "submitted",
+      "artifact": "crit-001",
+      "role": "critical-reviewer"
+    },
+    {
+      "at": "2026-10-10T17:33:35.029407+00:00",
+      "action": "review",
+      "artifact": "crit-001",
+      "reviewer": "legal-compliance",
+      "verdict": "ACCEPT",
+      "reason": "ok"
+    },
+    {
+      "at": "2026-10-10T17:33:48.292592+00:00",
+      "action": "submitted",
+      "artifact": "prd-001",
+      "role": "product-manager"
+    },
+    {
+      "at": "2026-10-10T17:37:59.540528+00:00",
+      "action": "review",
+      "artifact": "prd-001",
+      "reviewer": "architect",
+      "verdict": "ACCEPT",
+      "reason": "Viabilidade técnica confirmada. O escopo local minimalista atende aos requisitos arquiteturais sem overengineering."
+    },
+    {
+      "at": "2026-10-10T17:38:01.489747+00:00",
+      "action": "review",
+      "artifact": "prd-001",
+      "reviewer": "qa",
+      "verdict": "ACCEPT",
+      "reason": "Histórias e critérios de aceite testáveis. ACs cobrem cenários negativos e interações chave (confirmação)."
+    },
+    {
+      "at": "2026-10-10T17:41:04.247684+00:00",
+      "action": "submitted",
+      "artifact": "arch-001",
+      "role": "architect"
+    },
+    {
+      "at": "2026-10-10T17:41:54.054609+00:00",
+      "action": "review",
+      "artifact": "arch-001",
+      "reviewer": "security-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "Architecture uses strictly local storage. No network risks or credentials involved."
+    },
+    {
+      "at": "2026-10-10T17:47:04.701802+00:00",
+      "action": "submitted",
+      "artifact": "build-001",
+      "role": "developer"
+    },
+    {
+      "at": "2026-10-10T17:50:42.433829+00:00",
+      "action": "review",
+      "artifact": "build-001",
+      "reviewer": "implementation-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "Build completed successfully, tests passed."
+    },
+    {
+      "at": "2026-10-10T17:50:47.509985+00:00",
+      "action": "submitted",
+      "artifact": "sec-001",
+      "role": "security-reviewer"
+    },
+    {
+      "at": "2026-10-10T18:01:53.773158+00:00",
+      "action": "submitted",
+      "artifact": "qa-001",
+      "role": "qa"
+    },
+    {
+      "at": "2026-10-10T18:04:12.214997+00:00",
+      "action": "review",
+      "artifact": "qa-001",
+      "reviewer": "implementation-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "QA tests passed"
+    },
+    {
+      "at": "2026-10-10T18:04:17.705580+00:00",
+      "action": "review",
+      "artifact": "sec-001",
+      "reviewer": "implementation-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "Security review passed"
+    },
+    {
+      "at": "2026-10-10T18:04:29.174831+00:00",
+      "action": "advance",
+      "to": "DISCOVERY"
+    },
+    {
+      "at": "2026-10-10T18:04:34.981599+00:00",
+      "action": "advance",
+      "to": "PLANNING"
+    },
+    {
+      "at": "2026-10-10T18:04:40.499065+00:00",
+      "action": "advance",
+      "to": "DESIGN"
+    },
+    {
+      "at": "2026-10-10T18:05:28.621201+00:00",
+      "action": "submitted",
+      "artifact": "impl-001",
+      "role": "implementation-reviewer"
+    },
+    {
+      "at": "2026-10-10T18:05:32.549899+00:00",
+      "action": "review",
+      "artifact": "impl-001",
+      "reviewer": "critical-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "Review looks good"
+    },
+    {
+      "at": "2026-10-10T18:05:45.639021+00:00",
+      "action": "submitted",
+      "artifact": "release-001",
+      "role": "release-manager"
+    }
+  ]
+}

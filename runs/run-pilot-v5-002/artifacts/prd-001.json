@@ -1,0 +1,101 @@
+{
+  "id": "prd-001",
+  "run_id": "run-pilot-v5-002",
+  "summary": "Task Manager Microproject PRD",
+  "version": "5.0",
+  "status": "submitted",
+  "role": "product-manager",
+  "kind": "prd",
+  "input_ids": [
+    "market-001",
+    "crit-001"
+  ],
+  "evidence_refs": [],
+  "sections": {
+    "problem": "Users need a lightweight, simple task manager to keep track of their to-do items on their local machine without complex configurations, cloud synchronization, or paid services.",
+    "scope": "A local task manager application that supports creating tasks (with a mandatory title), listing all tasks, marking tasks as done or pending, and deleting tasks with a confirmation prompt. The application must perform field validation and persist data locally.",
+    "out_of_scope": "User authentication, cloud synchronization, paid services integration, deployment to remote servers, and collaborative features.",
+    "stories": [
+      {
+        "id": "story-1",
+        "as_a": "user",
+        "i_want": "to create a new task by providing a title",
+        "so_that": "I can record an item I need to do",
+        "acceptance_ids": [
+          "ac-1",
+          "ac-2"
+        ]
+      },
+      {
+        "id": "story-2",
+        "as_a": "user",
+        "i_want": "to view a list of all my tasks",
+        "so_that": "I can see what is pending and what is completed",
+        "acceptance_ids": [
+          "ac-3"
+        ]
+      },
+      {
+        "id": "story-3",
+        "as_a": "user",
+        "i_want": "to mark a task as done or pending",
+        "so_that": "I can track my progress",
+        "acceptance_ids": [
+          "ac-4"
+        ]
+      },
+      {
+        "id": "story-4",
+        "as_a": "user",
+        "i_want": "to delete a task with a confirmation prompt",
+        "so_that": "I can remove tasks I no longer need without accidental deletions",
+        "acceptance_ids": [
+          "ac-5",
+          "ac-6"
+        ]
+      }
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "ac-1",
+        "given": "the user wants to create a task",
+        "when": "they submit a valid title",
+        "then": "the task is created, saved locally, and appears in the task list"
+      },
+      {
+        "id": "ac-2",
+        "given": "the user wants to create a task",
+        "when": "they submit an empty title",
+        "then": "a validation error is displayed and the task is not created"
+      },
+      {
+        "id": "ac-3",
+        "given": "there are tasks saved locally",
+        "when": "the user requests to list tasks",
+        "then": "all tasks are displayed with their current status (done or pending)"
+      },
+      {
+        "id": "ac-4",
+        "given": "a task exists in the system",
+        "when": "the user toggles its status",
+        "then": "the status switches between done and pending, and the change is saved locally"
+      },
+      {
+        "id": "ac-5",
+        "given": "the user wants to delete a task",
+        "when": "they issue the delete command",
+        "then": "they are prompted for confirmation before deletion"
+      },
+      {
+        "id": "ac-6",
+        "given": "the user is prompted for deletion confirmation",
+        "when": "they confirm the deletion",
+        "then": "the task is permanently removed from local storage"
+      }
+    ],
+    "business_rules": "All tasks must have a non-empty title. Deletion requires explicit user confirmation. Data must be persisted locally.",
+    "security": "No sensitive data is collected. strictly local application with no authentication or network communication. The application should only read and write to its designated local storage file.",
+    "test_plan": "Unit tests for field validation (empty titles). Integration tests for creating, listing, updating status, and deleting tasks. Manual testing of the deletion confirmation prompt and local storage persistence.",
+    "risks": "Data loss if the local storage file is corrupted or accidentally deleted by the user."
+  }
+}
