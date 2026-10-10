@@ -182,6 +182,10 @@ def review(root:Path,run_id:str,artifact_id:str,reviewer:str,verdict:str,reason:
             
     if reviewer not in ROLES or reviewer==meta['role'] or reviewer=='orchestrator' or reviewer not in REVIEWERS.get(meta['kind'],set()):
         raise WorkflowError('independent reviewer required; no producer or orchestrator self-approval')
+    
+    doc = load(root/meta['path'])
+    validate_proof(root, doc)
+    
     if verdict not in ('ACCEPT','REWORK','REJECT'): raise WorkflowError('invalid review verdict')
     if not reason.strip(): raise WorkflowError('reason required')
     doc=load(root/meta['path'])

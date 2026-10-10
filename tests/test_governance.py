@@ -44,7 +44,7 @@ class GovernanceTests(unittest.TestCase):
   with self.assertRaises(control.WorkflowError):control.advance(self.root,'RUN-TEST','DISCOVERY')
  def test_qa_pass_needs_real_ui_evidence(self):
   d=self.doc('qa-report','qa');d['verdict']='PASS'
-  self.assertIn('PASS requires real_execution, command, exit_code=0 and output_ref',validate(d))
+  self.assertIn('execution block missing or invalid',validate(d))
   self.assertIn('QA PASS requires browser-interactive method',validate(d))
  def test_real_qa_log_must_exist(self):
   self.seed_build_dependencies()
@@ -56,7 +56,7 @@ class GovernanceTests(unittest.TestCase):
   d['verdict']='PASS';d['sections']['method']='browser-interactive'
   d['sections']['acceptance_mapping']=[{'criterion':'AC-001','result':'PASS'}]
   d['sections']['interactions']=[{'target':'#save','action':'click','expected':'saved','observed':'saved','evidence_ref':'evidence/missing-trace.zip'}]
-  d['execution']={'real_execution':True,'command':'pytest -q','exit_code':0,'output_ref':'evidence/fake.log','output_sha256':'abc'}
+  d['execution']={'real_execution':True,'command':'pytest -q','exit_code':0,'output_ref':'evidence/fake.log','output_sha256':'abc', 'tool':'pytest', 'version':'1.0', 'started_at':'now', 'finished_at':'now', 'environment':'local', 'commit_sha':'abc'}
   self.assertEqual(validate(d),[])
   with self.assertRaises(control.WorkflowError):control.submit(self.root,'RUN-TEST',d)
  def test_reviewer_role_is_restricted(self):

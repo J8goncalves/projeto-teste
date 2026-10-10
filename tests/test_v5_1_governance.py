@@ -76,7 +76,7 @@ class V51GovernanceTests(unittest.TestCase):
         d = self.doc('security-report', 'security-reviewer', aid='S001', inputs=[build_id])
         d['verdict'] = 'PASS'
         (self.root / 'f').write_bytes(b'scan output')
-        d['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 'f', 'output_sha256': hashlib.sha256(b'scan output').hexdigest()}
+        d['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 'f', 'output_sha256': hashlib.sha256(b'scan output').hexdigest(), 'tool':'x', 'version':'1', 'started_at':'1', 'finished_at':'1', 'environment':'1', 'commit_sha':'1'}
         d['sections']['scans'] = ['scan']
         with self.assertRaises(ValueError) as ctx:
             control.submit(self.root, 'RUN-TEST', d)
@@ -103,7 +103,7 @@ class V51GovernanceTests(unittest.TestCase):
         s = self.doc('security-report', 'security-reviewer', aid='S002', inputs=['B002'])
         s['verdict'] = 'PASS'
         (self.root / 's').write_bytes(b'scan output')
-        s['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 's', 'output_sha256': hashlib.sha256(b'scan output').hexdigest()}
+        s['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 's', 'output_sha256': hashlib.sha256(b'scan output').hexdigest(), 'tool':'x', 'version':'1', 'started_at':'1', 'finished_at':'1', 'environment':'1', 'commit_sha':'1'}
         s['sections']['scans'] = ['scan']
         control.submit(self.root, 'RUN-TEST', s)
         os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
@@ -116,7 +116,7 @@ class V51GovernanceTests(unittest.TestCase):
         q = self.doc('qa-report', 'qa', aid='Q001', inputs=[b1])
         q['verdict'] = 'PASS'
         (self.root / 'q').write_bytes(b'qa output')
-        q['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 'q', 'output_sha256': hashlib.sha256(b'qa output').hexdigest()}
+        q['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 'q', 'output_sha256': hashlib.sha256(b'qa output').hexdigest(), 'tool':'x', 'version':'1', 'started_at':'1', 'finished_at':'1', 'environment':'1', 'commit_sha':'1'}
         q['sections']['method'] = 'browser-interactive'
         q['sections']['acceptance_mapping']=[{'criterion':'AC-001','result':'PASS'}]
         q['sections']['interactions']=[{'target':'#save','action':'click','expected':'saved','observed':'saved','evidence_ref':'docs/evidence.md'}]
@@ -199,5 +199,38 @@ class V51GovernanceTests(unittest.TestCase):
             control.approval(self.root, 'RUN-TEST', 'BUILD', 'APPROVE', 'human', 'https://github.com/foo/bar/issues/1')
         self.assertIn("APPROVAL_PENDING: GitHub API check failed: API Error", str(ctx.exception))
         
+
+    def test_T14_qa_pass_without_interaction_fails(self):
+        b1 = self.seed_build_dependencies()
+        os.environ['AGY_ASSIGNED_ROLE'] = 'qa'
+        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-qa3'
+        q = self.doc('qa-report', 'qa', aid='Q002', inputs=[b1])
+        q['verdict'] = 'PASS'
+        (self.root / 'q2').write_bytes(b'qa output')
+        q['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 'q2', 'output_sha256': __import__('hashlib').sha256(b'qa output').hexdigest(), 'tool':'x', 'version':'1', 'started_at':'1', 'finished_at':'1', 'environment':'1', 'commit_sha':'1'}
+        q['sections']['method'] = 'browser-interactive'
+        q['sections']['acceptance_mapping']=[{'criterion':'AC-001','result':'PASS'}]
+        q['sections']['interactions'] = []
+        with self.assertRaises(Exception) as ctx:
+            control.submit(self.root, 'RUN-TEST', q)
+        self.assertIn('QA PASS requires documented real UI interactions with evidence', str(ctx.exception))
+
+    def test_T19_evidence_tampering_denied(self):
+        b1 = self.seed_build_dependencies()
+        os.environ['AGY_ASSIGNED_ROLE'] = 'security-reviewer'
+        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-sec3'
+        s = self.doc('security-report', 'security-reviewer', aid='S003', inputs=[b1])
+        s['verdict'] = 'PASS'
+        (self.root / 's3').write_bytes(b'scan output')
+        s['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 's3', 'output_sha256': __import__('hashlib').sha256(b'scan output').hexdigest(), 'tool':'x', 'version':'1', 'started_at':'1', 'finished_at':'1', 'environment':'1', 'commit_sha':'1'}
+        s['sections']['scans'] = ['scan']
+        control.submit(self.root, 'RUN-TEST', s)
+        (self.root / 's3').write_bytes(b'hacked scan output')
+        os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
+        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-ir6'
+        with self.assertRaises(Exception) as ctx:
+            control.review(self.root, 'RUN-TEST', 'S003', 'implementation-reviewer', 'ACCEPT', 'reviewed')
+        self.assertIn('execution output SHA-256 absent/mismatch', str(ctx.exception))
+
 if __name__ == '__main__':
     unittest.main()

@@ -106,8 +106,17 @@ def validate(doc: dict) -> list[str]:
             errors.append('explicit verdict required')
         if verdict=='PASS':
             ex=doc.get('execution')
-            if not isinstance(ex,dict) or ex.get('real_execution') is not True or not ex.get('command') or ex.get('exit_code')!=0 or not ex.get('output_ref'):
-                errors.append('PASS requires real_execution, command, exit_code=0 and output_ref')
+            if not isinstance(ex,dict):
+                errors.append('execution block missing or invalid')
+            else:
+                required_ex = ['real_execution', 'command', 'exit_code', 'output_ref', 'tool', 'version', 'started_at', 'finished_at', 'environment', 'commit_sha']
+                for f in required_ex:
+                    if str(ex.get(f)).strip() == '' or ex.get(f) is None:
+                        errors.append(f'execution missing {f}')
+                if ex.get('real_execution') is not True:
+                    errors.append('execution must be real')
+                if ex.get('exit_code') != 0:
+                    errors.append('PASS requires exit_code=0')
             if kind=='qa-report':
                 if sections.get('method')!='browser-interactive':
                     errors.append('QA PASS requires browser-interactive method')
