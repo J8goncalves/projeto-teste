@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="focus">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none';">
+    <title>Pomodoro Timer - Foco e Produtividade</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Anúncios acessíveis para leitores de tela -->
+    <div id="sr-status" class="sr-only" aria-live="polite" aria-atomic="true">
+        Pomodoro Timer carregado. Modo Foco pronto com 25 minutos.
+    </div>
+
+    <main class="pomodoro-card" role="region" aria-label="Aplicativo Pomodoro Timer">
+        <!-- Cabeçalho -->
+        <header class="app-header">
+            <div class="header-title-row">
+                <h1 class="app-title">Pomodoro</h1>
+                <span id="mode-badge" class="mode-badge">Foco</span>
+            </div>
+            <p class="app-subtitle">Mantenha a cadência de foco e descanso</p>
+        </header>
+
+        <!-- Seletores de Modo -->
+        <nav class="mode-selectors" role="tablist" aria-label="Modos do cronômetro">
+            <button id="mode-focus"
+                    type="button"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="timer-region"
+                    class="mode-btn active"
+                    data-mode="focus">
+                Foco (25m)
+            </button>
+            <button id="mode-break"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="timer-region"
+                    class="mode-btn"
+                    data-mode="break">
+                Descanso (5m)
+            </button>
+        </nav>
+
+        <!-- Temporizador com Anel SVG de Progresso -->
+        <section id="timer-region" class="timer-container" aria-label="Indicador de tempo">
+            <svg class="progress-ring" viewBox="0 0 250 250" role="img" aria-label="Gráfico circular de progresso do ciclo">
+                <circle class="progress-ring-track"
+                        cx="125"
+                        cy="125"
+                        r="110" />
+                <circle id="progress-circle"
+                        class="progress-ring-fill"
+                        cx="125"
+                        cy="125"
+                        r="110" />
+            </svg>
+            <div class="timer-content">
+                <div id="time-display" class="time-display" aria-label="Tempo restante">25:00</div>
+                <span id="status-label" class="status-label">Pronto</span>
+            </div>
+        </section>
+
+        <!-- Botoes de Controle -->
+        <div class="controls-container" role="group" aria-label="Controles do cronômetro">
+            <button id="btn-start" type="button" class="btn btn-primary" aria-label="Iniciar contagem">
+                Iniciar
+            </button>
+            <button id="btn-pause" type="button" class="btn btn-secondary" aria-label="Pausar contagem" disabled>
+                Pausar
+            </button>
+            <button id="btn-reset" type="button" class="btn btn-secondary" aria-label="Reiniciar contagem">
+                Reiniciar
+            </button>
+        </div>
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="app-footer">
+        <p>Pomodoro Timer V5 — Client-side puro e sem rastreamento.</p>
+        <p>Navegável integralmente por teclado (Tab, Enter e Espaço).</p>
+    </footer>
+
+    <script src="timer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

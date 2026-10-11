@@ -1,0 +1,21 @@
+{
+  "id": "ART-INTAKE-001",
+  "run_id": "RUN-POMODORO-001",
+  "version": "5.0",
+  "kind": "intake",
+  "role": "orchestrator",
+  "status": "submitted",
+  "summary": "Demanda humana para construcao de uma aplicacao web simples, bonita, intuitiva, responsiva e funcional de Pomodoro Timer, com cronometro de 25 minutos para foco e 5 minutos para descanso, com controles de iniciar, pausar e reiniciar. Execucao sob a governanca V5 no modo ENGINEERING_SMALL sem necessidade de discovery/pesquisa de mercado, com isolamento estrito de diretorio para nao alterar o Task Manager existente na raiz de src/. Sem merge na main e sem publicacao em producao sem autorizacao.",
+  "input_ids": [],
+  "evidence_refs": [
+    "evidence/RUN-POMODORO-001/ledger.md",
+    "evidence/RUN-POMODORO-001/memory-brief-orchestrator.txt"
+  ],
+  "sections": {
+    "goal": "Construir e testar uma aplicacao web de Pomodoro Timer (25min foco, 5min descanso, botoes iniciar, pausar e reiniciar), com design moderno e acessivel (WCAG 2.2 AA), motor de temporizacao preciso e suite automatizada de testes.",
+    "scope": "Dentro: Especificacao de PRD com Given/When/Then rastreaveis; arquitetura simples client-side desacoplada e isolada em subdiretorio dedicado `src/pomodoro/`; implementacao de modulo puro de contagem regressiva (`src/pomodoro/timer.js`), interface semantica (`src/pomodoro/index.html`), estilos responsivos com tokens e alto contraste (`src/pomodoro/style.css`) e controle seguro do DOM (`src/pomodoro/app.js`); testes unitarios automatizados (`tests/test_pomodoro.py` e `tests/test_pomodoro.test.js`); testes de QA e AppSec; relatorio auditavel de execucao. Fora: backend remoto, persistencia em banco de dados na nuvem, autenticacao/contas de usuario, coleta de telemetria, merge na main e deploy em producao.",
+    "constraints": "Sem merge em main nem publicacao em producao sem autorizacao. O produto novo deve residir estritamente em `src/pomodoro/` para preservar intactos os arquivos do Task Manager existente na raiz de `src/`. Modo de workflow ENGINEERING_SMALL: planejamento de produto focado diretamente em PRD e Arquitetura sem necessidade de pesquisa de mercado. Sem dados pessoais (LGPD por design). Testes reais no navegador e scanners de seguranca reais.",
+    "risk_level": "Nivel 1 (utilitario local simples, client-side, sem risco de seguranca ou dados regulados).",
+    "definition_of_success": "PRD estruturado aceito de forma independente por QA; arquitetura pragmatica aceita de forma independente por Security; codigo implementado com 100% de testes unitarios passando; testes automatizados executados com sucesso comprovado; sem sobreposicao de arquivos existentes; relatorio final completo e auditavel."
+  }
+}

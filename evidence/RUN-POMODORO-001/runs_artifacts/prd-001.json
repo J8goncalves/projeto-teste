@@ -1,0 +1,156 @@
+{
+  "id": "ART-PRD-001",
+  "run_id": "RUN-POMODORO-001",
+  "version": "5.0",
+  "kind": "prd",
+  "role": "product-manager",
+  "status": "submitted",
+  "summary": "Documento de Requisitos de Produto (PRD) para a aplicacao Pomodoro Timer isolada em src/pomodoro/, especificando os ciclos de Foco (25 min) e Descanso (5 min), operacoes de controle de cronometro (iniciar, pausar, reiniciar), alternancia manual e automatica de modo com notificacao acessivel, display visual de alta legibilidade com barra/anel de progresso e conformidade com acessibilidade WCAG 2.2 AA.",
+  "input_ids": [
+    "ART-INTAKE-001"
+  ],
+  "evidence_refs": [
+    "runs/RUN-POMODORO-001/artifacts/ART-INTAKE-001.json"
+  ],
+  "sections": {
+    "problem": "Profissionais e estudantes enfrentam perda frequente de concentracao e fadiga cognitiva sem uma cadencia estruturada de foco e descanso. As ferramentas atuais de cronometro comumente impoem barreiras de adocao (exigencia de login, sincronizacao em nuvem, anuncios visuais invasivos, interfaces pesadas e rastreamento de dados pessoais), enquanto solucoes hiper-simplistas carecem de indicacao visual de progresso, alertas claros de transicao e suporte a acessibilidade para navegacao por teclado e leitores de tela.",
+    "scope": "Aplicacao web client-side autosuficiente de Pomodoro Timer, implementada estritamente em 'src/pomodoro/'. Inclui: motor de temporizacao com contagem regressiva em segundos para Modo Foco (1500 segundos / 25 minutos) e Modo Descanso (300 segundos / 5 minutos); controles de estado (Iniciar contagem regressiva a cada 1s, Pausar congelando o tempo atual, Reiniciar restaurando a duracao original do modo corrente); alternancia manual de modo atraves de controles dedicados e alternancia automatica ao expirar o tempo (00:00); feedback visual e sonoro de conclusao com suporte a 'aria-live'; display em formato MM:SS acompanhado de indicador visual de progresso (barra ou anel SVG proporcional ao tempo decorrido); paleta de cores semantica com distincao visual entre Foco e Descanso e suporte a alto contraste; interface totalmente navegavel por teclado e compativel com diretrizes WCAG 2.2 AA.",
+    "out_of_scope": "Autenticacao e contas de usuario; persistencia ou sincronizacao remota em nuvem; integracao com calendarios externos (Google Calendar, Outlook); telemetria remota ou rastreamento analitico de produtividade; notificacoes push nativas de sistema operacional; alteracoes em arquivos do Task Manager existente fora de 'src/pomodoro/'.",
+    "stories": [
+      {
+        "id": "US-001",
+        "as_a": "usuario buscando manter foco em minhas tarefas",
+        "i_want": "executar um ciclo de foco de 25 minutos com contagem regressiva precisa e controles de iniciar, pausar e reiniciar",
+        "so_that": "eu consiga gerenciar blocos dedicados de trabalho sem distracoes externas",
+        "acceptance_ids": [
+          "AC-001",
+          "AC-002",
+          "AC-003",
+          "AC-004"
+        ]
+      },
+      {
+        "id": "US-002",
+        "as_a": "usuario finalizando uma sessao de foco",
+        "i_want": "iniciar um ciclo de descanso de 5 minutos e poder alternar de modo a qualquer instante",
+        "so_that": "eu recupere minha energia cognitiva antes do proximo bloco produtivo",
+        "acceptance_ids": [
+          "AC-005",
+          "AC-006",
+          "AC-007"
+        ]
+      },
+      {
+        "id": "US-003",
+        "as_a": "usuario monitorando meu tempo de trabalho",
+        "i_want": "visualizar o tempo restante no formato MM:SS e acompanhar o progresso atraves de um indicador visual com mudanca de tema conforme o modo",
+        "so_that": "eu tenha percepcao imediata e periferica do andamento do ciclo",
+        "acceptance_ids": [
+          "AC-008",
+          "AC-009"
+        ]
+      },
+      {
+        "id": "US-004",
+        "as_a": "usuario que depende de recursos de acessibilidade ou navegacao por teclado",
+        "i_want": "operar todos os comandos via teclado e receber anuncios de status e transicao via leitor de tela",
+        "so_that": "a aplicacao seja universalmente utilizavel sem barreiras funcionais (WCAG 2.2 AA)",
+        "acceptance_ids": [
+          "AC-010",
+          "AC-011"
+        ]
+      }
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "AC-001",
+        "given": "que o cronometro esta no Modo Foco em estado inicial",
+        "when": "o usuario visualiza a tela inicial",
+        "then": "o display exibe '25:00' (1500 segundos) e o botao de acao principal apresenta o texto 'Iniciar'."
+      },
+      {
+        "id": "AC-002",
+        "given": "que o cronometro esta configurado no Modo Foco e parado",
+        "when": "o usuario clica em 'Iniciar'",
+        "then": "o cronometro passa ao estado ativo (running), o tempo decrementa a cada 1 segundo e o botao de inicio passa a exibir 'Pausar'."
+      },
+      {
+        "id": "AC-003",
+        "given": "que o cronometro esta rodando no Modo Foco",
+        "when": "o usuario clica em 'Pausar'",
+        "then": "a contagem regressiva e congelada no segundo exato da pausa e o botao exibe 'Continuar'."
+      },
+      {
+        "id": "AC-004",
+        "given": "que o cronometro esta em andamento ou pausado",
+        "when": "o usuario clica em 'Reiniciar'",
+        "then": "a contagem regressiva e interrompida e o display retorna para o tempo inicial do modo ativo ('25:00' para Foco ou '05:00' para Descanso)."
+      },
+      {
+        "id": "AC-005",
+        "given": "que o usuario deseja alternar deliberadamente para a pausa",
+        "when": "o usuario clica no seletor de 'Modo Descanso'",
+        "then": "o cronometro reseta a contagem, define o tempo para '05:00' (300 segundos), atualiza o estado ativo para descanso e ajusta o tema visual correspondente."
+      },
+      {
+        "id": "AC-006",
+        "given": "que o cronometro esta rodando e atinge '00:00'",
+        "when": "o ultimo segundo e decrementado",
+        "then": "a contagem e encerrada, um alerta sonoro/sinalizador acessivel e emitido e a aplicacao transita automaticamente para o modo oposto (Foco -> Descanso ou Descanso -> Foco) pronto para novo acionamento."
+      },
+      {
+        "id": "AC-007",
+        "given": "que o cronometro esta no Modo Descanso",
+        "when": "o usuario clica em 'Iniciar'",
+        "then": "o tempo decrementa a partir de 300 segundos (05:00) ate 00:00 com os mesmos comportamentos de pausa e reinicio."
+      },
+      {
+        "id": "AC-008",
+        "given": "que o cronometro esta em contagem ativa",
+        "when": "os segundos decrementam",
+        "then": "o indicador visual de progresso (barra ou anel) reflete a porcentagem exata de tempo decorrido em relacao a duracao total daquele ciclo."
+      },
+      {
+        "id": "AC-009",
+        "given": "que ha transicao entre os modos Foco e Descanso",
+        "when": "o modo corrente e alterado",
+        "then": "o tema visual da aplicacao altera os tokens de cores semanticas (ex: tons de terracota/laranja quente para Foco e tons de verde/menta calmante para Descanso), mantendo taxa de contraste de texto e elementos interativos de no minimo 4.5:1."
+      },
+      {
+        "id": "AC-010",
+        "given": "que a pagina e carregada",
+        "when": "o usuario navega exclusivamente via tecla Tab e teclas de acionamento (Enter / Space)",
+        "then": "todos os botoes e controles interativos recebem indicador visual claro de foco e podem ser acionados sem dependencia de ponteiro do mouse."
+      },
+      {
+        "id": "AC-011",
+        "given": "que um usuario utiliza leitor de tela (screen reader)",
+        "when": "o cronometro e iniciado, pausado, reiniciado ou conclui seu ciclo",
+        "then": "mensagens descritivas de mudanca de estado sao despachadas em regiao declarada com aria-live='polite', sem causar poluição auditiva constante a cada segundo."
+      }
+    ],
+    "business_rules": [
+      "BR-01: A duracao padrao e imutavel em runtime basico: 25 minutos (1500 segundos) para Foco e 5 minutos (300 segundos) para Descanso.",
+      "BR-02: O temporizador deve calcular a contagem com precisao deterministica, decrementando 1 segundo a cada intervalo.",
+      "BR-03: Ao mudar de modo manualmente enquanto o cronometro roda, a contagem anterior e interrompida e o novo modo e inicializado em estado pausado/pronto.",
+      "BR-04: Todo o codigo, recursos e folhas de estilo do Pomodoro Timer devem residir estritamente sob 'src/pomodoro/' para assegurar o isolamento do projeto em relacao a outros modulos do repositorio.",
+      "BR-05: Nenhum dado de usuario ou cookie deve ser enviado para servidores externos; a solucao e 100% local e client-side (Privacy by Design)."
+    ],
+    "security": "Como a aplicacao e puramente client-side sem backend proprio ou coleta de dados, a superficie de ataque e minima. Requisitos de seguranca mandatorios: 1) Proibicao estrita de uso de innerHTML com interpolacao de dados nao sanitizados; manipulacao de DOM deve utilizar unicamente textContent ou elementos estruturados; 2) Ausencia de bibliotecas ou CDNs externas nao auditadas (zero dependencias terceiras inseguras no bundle de frontend); 3) Proibicao de eval() e Function() construtor; 4) Nenhuma exposicao de tokens, chaves ou credenciais.",
+    "test_plan": "A suite de verificacao deve cobrir tres camadas: 1) Testes unitarios automatizados em motor JavaScript/Node e suite Python de validacao de integridade para a logica de contagem (funcoes de formatacao MM:SS, maquina de estados de transicao Foco/Descanso, calculo de progresso e tratamento de limites 00:00); 2) Testes de QA funcional com operacao real em navegador registrando interacoes de clique, cronometragem acelerada/avancada de validacao, inspecao de classes de tema e observacao de logs de console; 3) Auditoria de acessibilidade automatizada (DevTools/axe) e verificacao de conformidade WCAG 2.2 AA (taxa de contraste > 4.5:1, foco visivel e regiao aria-live).",
+    "risks": [
+      {
+        "risk": "Desvio temporal (timer drift) decorrente do congelamento de abas em segundo plano pelo navegador",
+        "mitigation": "Utilizar calculo baseado no delta de Date.now() / performance.now() em relacao ao instante alvo de expiracao em vez de acumulacao cega de chamadas setInterval."
+      },
+      {
+        "risk": "Poluicao sonora ou de leitor de tela caso o aria-live seja atualizado a cada segundo da contagem",
+        "mitigation": "Atualizar a regiao aria-live apenas em eventos criticos (iniciar, pausar, reiniciar, transicao de modo e conclusao a 00:00), mantendo a contagem de cada segundo restrita ao display visual e aria-hidden ou atualizacao controlada."
+      },
+      {
+        "risk": "Colisao de estilos com o restante do repositorio",
+        "mitigation": "Isolar seletores e variaveis de CSS com escopo proprio de classes ou prefixos sob src/pomodoro/."
+      }
+    ]
+  }
+}

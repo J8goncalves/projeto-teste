@@ -1,0 +1,143 @@
+{
+  "id": "ART-ARCH-001",
+  "run_id": "RUN-POMODORO-001",
+  "version": "5.0",
+  "kind": "architecture",
+  "role": "architect",
+  "status": "submitted",
+  "summary": "Especificacao de arquitetura pragmatica para o Pomodoro Timer (ART-ARCH-001), adotando SPA client-side pura (HTML5 semantico, CSS moderno com design tokens e Vanilla JS modular) isolada em 'src/pomodoro/'. Inclui motor de temporizacao puro desacoplado baseado em timestamps (Date.now()) para eliminacao de drift, anel SVG animado com suporte a temas semanticos dinamicos, CSP estrita e ADR-002.",
+  "input_ids": [
+    "ART-PRD-001"
+  ],
+  "evidence_refs": [
+    "runs/RUN-POMODORO-001/artifacts/ART-PRD-001.json"
+  ],
+  "sections": {
+    "requirements": {
+      "functional": [
+        "Temporizacao deterministica para Modo Foco (1500 segundos / 25 minutos) e Modo Descanso (300 segundos / 5 minutos).",
+        "Operacoes de controle de estado: Iniciar, Pausar (preservando segundo restante exato) e Reiniciar (restaurando valor inicial do modo corrente).",
+        "Alternancia de modo manual via botoes dedicados e automatica ao atingir 00:00 com notificacao sonora e visual.",
+        "Display digital em formato MM:SS acompanhado de indicador visual continuo de progresso (anel SVG responsivo com stroke-dashoffset).",
+        "Temas visuais dinamicos com tokens CSS semanticos: Focus Mode (vermelho/terracota #d95550 / #ba4949) e Break Mode (azul/verde esmeralda #4c9195 / #38858a)."
+      ],
+      "non_functional": [
+        "Precisao temporal: motor de temporizacao baseado em deltas de timestamps (Date.now()) para prevencao absoluta de acumulacao de drift por throttling de abas inativas no navegador.",
+        "Acessibilidade: conformidade com WCAG 2.2 AA, razao de contraste minima de 4.5:1 para texto normal, 3:1 para controles visuais, foco por teclado visivel com anel de 3px de alto contraste, regiao 'aria-live=\"polite\"' para status e anuncios de conclusao.",
+        "Isolamento arquitetural: todos os arquivos residirao estritamente em 'src/pomodoro/', garantindo que o Task Manager em 'src/' e a Calculadora em 'src/calculadora-viabilidade/' permaneçam 100% inalterados.",
+        "Testabilidade: motor do timer encapsulado em 'src/pomodoro/timer.js' sem dependencias de DOM/Browser, compativel com exportacao CommonJS (Node.js/Jest/test runners) e Browser global/ESM."
+      ]
+    },
+    "options": [
+      {
+        "id": "OPT-A",
+        "name": "SPA Client-Side Pura (HTML5 + CSS Moderno + Vanilla JS Modular)",
+        "description": "Aplicacao web estatica nativa, sem etapas de build ou dependencias de terceiros. Logica de temporizacao isolada em 'timer.js' e interacao com UI em 'app.js'.",
+        "pros": [
+          "Zero dependencias e zero vulnerabilidades de cadeia de suprimentos (npm supply chain).",
+          "Execucao instantanea em qualquer servidor estatico ou arquivo local.",
+          "Custo de infraestrutura e manutencao zero.",
+          "Tamanho total inferior a 25 KB com carregamento sub-100ms."
+        ],
+        "cons": [
+          "Requer manipulacao manual do DOM e binding explicito de eventos (facilmente gerenciado para utilitarios focados)."
+        ]
+      },
+      {
+        "id": "OPT-B",
+        "name": "Single-Page Application com Framework Reativo (React/Vue + Vite)",
+        "description": "Utilizacao de componentes React/Vue com build pipeline Vite e Tailwind CSS.",
+        "pros": [
+          "Gerenciamento de estado declarativo via hooks/reatividade.",
+          "Ecossistema padrao para aplicacoes complexas multi-pagina."
+        ],
+        "cons": [
+          "Complexidade acidental desproporcional para um cronometro (node_modules, scripts de bundle, lockfiles).",
+          "Aumento desnecessario de bundle (centenas de KB a MB) violando o principio da menor solucao viavel.",
+          "Maior superficie de seguranca e dependencia de ciclo de vida de ferramentas de build."
+        ]
+      },
+      {
+        "id": "OPT-C",
+        "name": "Arquitetura Cliente-Servidor (Node.js/Express + WebSockets/SSE)",
+        "description": "Temporizacao mantida no servidor com sincronizacao em tempo real via WebSockets ou Server-Sent Events.",
+        "pros": [
+          "Permitiria sincronizar o cronometro entre multiplos dispositivos do mesmo usuario."
+        ],
+        "cons": [
+          "Viola expressamente o escopo do PRD (ART-PRD-001) que define aplicacao client-side local.",
+          "Custo de computacao em nuvem, complexidade de rede, latencia e pontos unicos de falha desnecessarios."
+        ]
+      }
+    ],
+    "simplest_viable": {
+      "selected_option": "OPT-A",
+      "rationale": "A Opcao A e a Menor Solucao Viavel (Principio KISS e YAGNI). O Pomodoro Timer e essencialmente um utilitario de produtividade pessoal client-side. Uma SPA nativa em Vanilla JS elimina camadas desnecessarias de abstracao, permite isolamento total em 'src/pomodoro/', atinge performance excepcional e assegura zero custos de hospedagem e infraestrutura.",
+      "file_structure": [
+        "src/pomodoro/index.html - Estrutura HTML5 semantica, CSP estrita, elementos de acessibilidade (ARIA) e anel de progresso SVG.",
+        "src/pomodoro/style.css - Design tokens semanticos (cores de Foco e Descanso, tipografia, espacamentos, animacao de dashoffset e estados de foco WCAG).",
+        "src/pomodoro/timer.js - Motor puro de temporizacao baseado em timestamps (Date.now()), sem acoplamento a DOM, com metodos start, pause, resume, reset, switchMode e tick.",
+        "src/pomodoro/app.js - Controlador de UI, listeners de teclado/clique, atualizacao do display MM:SS, renderizacao do progresso SVG, sintetizador sonoro Web Audio API e anuncios acessiveis.",
+        "tests/pomodoro/ - Bateria de testes unitarios automatizados para timer.js e integracao de fluxo."
+      ]
+    },
+    "tradeoffs": {
+      "simplicity_vs_framework": "Optar por Vanilla JS em vez de frameworks reduz o overhead de setup, eliminando pipelines de build e riscos de seguranca em dependencias npm. O custo marginal de manipular elementos de UI diretamente e desprezivel devido a simplicidade do dominio (menos de 6 elementos interativos).",
+      "timestamp_vs_interval_ticks": "Em vez de confiar cegamente em decrementos de 1 a cada disparo de setInterval(1000) — que sofre atraso quando abas sao minimizadas pelo navegador —, o timer calcula o tempo restante pela diferenca entre 'targetEndTime' e 'Date.now()'. Isso garante precisao milissegundica sem consumo excessivo de CPU.",
+      "web_audio_vs_external_assets": "O aviso sonoro utiliza sintetizador de frequencia discreto com AudioContext (Web Audio API nativa), eliminando dependencias de arquivos de audio MP3/WAV externos, evitando problemas de CORS, 404 de assets e economizando requisicoes de rede."
+    },
+    "financial_feasibility": {
+      "capex": "$0.00 (Desenvolvimento concluido na run governada sem aquisicao de softwares ou ferramentas proprietarias).",
+      "opex": "$0.00/mes (Aplicacao puramente estatica, hospedavel sem custos adicionais em GitHub Pages, Cloudflare Pages ou servida estaticamente no ambiente existente).",
+      "licensing": "Livre de custos de licenciamento; codigo aberto sob a mesma licenca do projeto.",
+      "maintenance_effort": "Estimada em menos de 1 hora por trimestre, limitada a eventuais ajustes de design ou melhorias de acessibilidade."
+    },
+    "security": {
+      "content_security_policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none';",
+      "dom_manipulation": "Proibicao absoluta do uso de 'innerHTML', 'outerHTML', 'document.write' e 'eval()'. Toda atualizacao dinamica de texto usa estritamente 'textContent' e manipulacao de atributos via 'setAttribute' e 'classList'.",
+      "pii_and_data_privacy": "Zero coleta de dados pessoais, telemetria ou cookies. Toda informacao operacional e volatil e reside unicamente na memoria da sessao do navegador.",
+      "least_privilege": "A aplicacao nao requisita permissoes elevadas de hardware, camera, microfone ou geolocalizacao."
+    },
+    "adr": {
+      "id": "ADR-002",
+      "title": "Pomodoro Timer Client-Side Puro com Temporizador Baseado em Timestamps e Isolamento de Modulo",
+      "status": "ACCEPTED",
+      "context": "A organizacao necessita de uma aplicacao de Pomodoro Timer leve, elegante, responsiva e acessivel, sem interferir nas funcionalidades existentes no repositorio e sem introduzir custos operacionais ou vulnerabilidades.",
+      "decision": "Adotar arquitetura SPA Vanilla JS estrita, isolada no diretorio 'src/pomodoro/', estruturada em um motor puro de cronometro desacoplado ('timer.js') com calculo de delta baseado em timestamps (Date.now()) e controlador de interface acessivel ('app.js').",
+      "consequences": {
+        "positive": [
+          "Zero dependencias e tempo de inicializacao instantaneo.",
+          "Resiliencia a throttling de abas do navegador gracas ao uso de timestamps reais.",
+          "Isolamento completo protegendo o Task Manager e a Calculadora de Viabilidade de qualquer regressao.",
+          "Testabilidade unitaria direta em ambientes Node.js e navegadores sem mocks pesados."
+        ],
+        "negative": [
+          "Ausencia de sincronizacao em nuvem entre dispositivos (mitigada por ser expressamente out-of-scope no PRD)."
+        ]
+      }
+    },
+    "risks": [
+      {
+        "id": "RSK-001",
+        "description": "Throttling de timers pelo navegador em abas em segundo plano gerando atraso na contagem.",
+        "probability": "Alta",
+        "impact": "Medio",
+        "mitigation": "O temporizador em 'timer.js' armazena o timestamp exato de termino previsto ('targetEndTime') e calcula o tempo restante como Math.ceil((targetEndTime - Date.now()) / 1000). Caso o setInterval sofra throttling, a primeira execucao subsequente recalcula e sincroniza o tempo exato instantaneamente."
+      },
+      {
+        "id": "RSK-002",
+        "description": "Politicas de autoplay de navegadores modernos bloqueando a reproducao do aviso sonoro ao termino do ciclo.",
+        "probability": "Media",
+        "impact": "Baixo",
+        "mitigation": "O 'AudioContext' e inicializado no primeiro clique do usuario em 'Iniciar' ou 'Alternar modo'. Em caso de bloqueio residual do contexto de audio, um feedback visual de alto contraste e anuncio em 'aria-live' garantem a percepcao do usuario de forma resiliente."
+      },
+      {
+        "id": "RSK-003",
+        "description": "Colisao de estilizacao CSS ou scripts com aplicacoes pre-existentes no repositorio.",
+        "probability": "Baixa",
+        "impact": "Alto",
+        "mitigation": "Isolamento estrito de diretorio em 'src/pomodoro/', prefixacao/escopo de classes CSS sob o container '.pomodoro-app' e referencias relativas autocontidas em 'src/pomodoro/index.html'."
+      }
+    ]
+  }
+}
