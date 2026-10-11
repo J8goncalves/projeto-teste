@@ -1,52 +1,43 @@
 /**
  * Task Manager — Aplicação Local Acessível, Resiliente e com Integridade Criptográfica
- * Organização V5.1.1 — Fase E (Piloto A)
+ * Organização V5.1.1 — Fase E (Piloto A - Fechamento de Qualidade)
  */
 
 (function () {
     'use strict';
 
-    // Utilitário de Hashing SHA-256 (compatível com Browser Web Crypto e Node.js)
+    // Utilitário Criptográfico Seguro SHA-256 (Fail-closed: sem fallbacks fracos)
     async function calculateSha256(dataString) {
         if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
-            try {
-                const encoder = new TextEncoder();
-                const data = encoder.encode(dataString);
-                const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            } catch (e) {
-                console.warn('Falha no WebCrypto, usando fallback:', e);
-            }
+            const encoder = new TextEncoder();
+            const data = encoder.encode(dataString);
+            const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         if (typeof require === 'function') {
             try {
                 const crypto = require('crypto');
                 return crypto.createHash('sha256').update(dataString, 'utf8').digest('hex');
             } catch (e) {
-                // Ignore se não estiver no Node
+                // Falha se módulo nativo não estiver acessível
             }
         }
-        // Fallback determinístico caso Web Crypto não esteja disponível no ambiente mock
-        let hash = 0;
-        for (let i = 0; i < dataString.length; i++) {
-            const char = dataString.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash |= 0;
-        }
-        return 'fallback-' + Math.abs(hash).toString(16);
+        // FAIL-CLOSED: Nunca emitir hash fraco ou não criptográfico sob o rótulo de SHA-256
+        throw new Error('Ambiente seguro Web Crypto API indisponível para cálculo de digest SHA-256.');
     }
 
-    // Gerador de ID único resiliente
+    // Gerador de ID único com prefixo canônico
     function generateId() {
         return 'task-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 6);
     }
 
-    // Camada de Armazenamento e Migração (TaskStore)
+    // Camada de Domínio e Armazenamento (TaskStore)
     class TaskStore {
         constructor() {
             this.storageKey = 'tasks';
             this.tasks = [];
+            this.corruptedDataDetected = false;
             this.load();
         }
 
@@ -55,7 +46,8 @@
             try {
                 rawData = localStorage.getItem(this.storageKey);
             } catch (err) {
-                console.error('Erro ao acessar localStorage:', err);
+                console.error('Erro de acesso ao localStorage:', err);
+                return;
             }
 
             if (!rawData) {
@@ -66,7 +58,7 @@
             try {
                 const parsed = JSON.parse(rawData);
                 if (!Array.isArray(parsed)) {
-                    console.warn('Dados corrompidos no localStorage. Inicializando vazio.');
+                    this.isolateCorruptedData(rawData, 'Estrutura não é um array');
                     this.tasks = [];
                     return;
                 }
@@ -75,11 +67,11 @@
                 let migrationNeeded = false;
                 this.tasks = parsed.map((item, index) => {
                     if (item && typeof item === 'object') {
-                        // Verifica se é o formato legado v0
+                        // Detecta formato legado v0
                         if (!item.id || typeof item.done === 'boolean') {
                             migrationNeeded = true;
                             return {
-                                id: item.id || generateId() + '-' + index,
+                                id: item.id || (generateId() + '-' + index),
                                 title: String(item.title || 'Tarefa Sem Título').trim(),
                                 description: String(item.description || '').trim(),
                                 criteria: String(item.criteria || '').trim(),
@@ -88,15 +80,15 @@
                                 updatedAt: new Date().toISOString()
                             };
                         }
-                        // Já está no esquema v1 estruturado
+                        // Esquema v1 estruturado
                         return {
                             id: String(item.id),
                             title: String(item.title || '').trim(),
                             description: String(item.description || '').trim(),
                             criteria: String(item.criteria || '').trim(),
                             status: ['TODO', 'IN_PROGRESS', 'DONE'].includes(item.status) ? item.status : 'TODO',
-                            createdAt: item.createdAt || new Date().toISOString(),
-                            updatedAt: item.updatedAt || new Date().toISOString()
+                            createdAt: String(item.createdAt || new Date().toISOString()),
+                            updatedAt: String(item.updatedAt || new Date().toISOString())
                         };
                     }
                     return null;
@@ -107,8 +99,19 @@
                     this.save();
                 }
             } catch (err) {
-                console.error('Falha de parse em dados do localStorage. Fail-safe ativado:', err);
+                this.isolateCorruptedData(rawData, err.message);
                 this.tasks = [];
+            }
+        }
+
+        isolateCorruptedData(rawContent, reason) {
+            this.corruptedDataDetected = true;
+            console.warn('Dados corrompidos detectados no localStorage. Isolando em quarentena:', reason);
+            try {
+                const quarantineKey = 'tasks_corrupted_quarantine_' + Date.now();
+                localStorage.setItem(quarantineKey, rawContent);
+            } catch (e) {
+                console.error('Falha ao gravar quarentena no localStorage:', e);
             }
         }
 
@@ -117,7 +120,7 @@
                 localStorage.setItem(this.storageKey, JSON.stringify(this.tasks));
                 return true;
             } catch (err) {
-                console.error('Erro ao salvar tarefas no localStorage (cota excedida?):', err);
+                console.error('Falha ao salvar no localStorage (cota de disco excedida ou armazenamento bloqueado):', err);
                 return false;
             }
         }
@@ -127,17 +130,21 @@
             if (!cleanTitle) {
                 throw new Error('O título da tarefa não pode estar vazio.');
             }
+            const now = new Date().toISOString();
             const task = {
                 id: generateId(),
                 title: cleanTitle,
                 description: String(description || '').trim(),
                 criteria: String(criteria || '').trim(),
                 status: 'TODO',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                createdAt: now,
+                updatedAt: now
             };
             this.tasks.push(task);
-            this.save();
+            if (!this.save()) {
+                this.tasks.pop(); // Reverte alteração em memória
+                throw new Error('Não foi possível persistir a nova tarefa no armazenamento local.');
+            }
             return task;
         }
 
@@ -146,23 +153,86 @@
                 throw new Error('Status inválido: ' + newStatus);
             }
             const task = this.tasks.find(t => t.id === id);
-            if (task) {
-                task.status = newStatus;
-                task.updatedAt = new Date().toISOString();
-                this.save();
-                return task;
+            if (!task) return null;
+
+            const oldStatus = task.status;
+            const oldUpdatedAt = task.updatedAt;
+
+            task.status = newStatus;
+            task.updatedAt = new Date().toISOString();
+
+            if (!this.save()) {
+                // Reverte alteração em memória
+                task.status = oldStatus;
+                task.updatedAt = oldUpdatedAt;
+                throw new Error('Não foi possível persistir a atualização de status no armazenamento local.');
             }
-            return null;
+            return task;
         }
 
         delete(id) {
             const index = this.tasks.findIndex(t => t.id === id);
-            if (index !== -1) {
-                const removed = this.tasks.splice(index, 1)[0];
-                this.save();
-                return removed;
+            if (index === -1) return null;
+
+            const removed = this.tasks.splice(index, 1)[0];
+            if (!this.save()) {
+                this.tasks.splice(index, 0, removed); // Reverte alteração em memória
+                throw new Error('Não foi possível persistir a exclusão da tarefa no armazenamento local.');
             }
-            return null;
+            return removed;
+        }
+
+        restore(tasksList) {
+            if (!Array.isArray(tasksList)) {
+                throw new Error('A lista de tarefas para restauração deve ser um array.');
+            }
+
+            // Validação atômica e completa de cada item antes de alterar o estado
+            const validated = tasksList.map((item, idx) => {
+                if (!item || typeof item !== 'object') {
+                    throw new Error(`Item ${idx} inválido no arquivo de backup.`);
+                }
+                const id = String(item.id || '').trim();
+                if (!id) {
+                    throw new Error(`Tarefa no índice ${idx} não possui ID.`);
+                }
+                const title = String(item.title || '').trim();
+                if (!title) {
+                    throw new Error(`Tarefa ${id} não possui título válido.`);
+                }
+                const status = item.status;
+                if (!['TODO', 'IN_PROGRESS', 'DONE'].includes(status)) {
+                    throw new Error(`Status inválido "${status}" na tarefa ${id}.`);
+                }
+                return {
+                    id: id,
+                    title: title,
+                    description: String(item.description || '').trim(),
+                    criteria: String(item.criteria || '').trim(),
+                    status: status,
+                    createdAt: String(item.createdAt || new Date().toISOString()),
+                    updatedAt: String(item.updatedAt || new Date().toISOString())
+                };
+            });
+
+            // Previne IDs duplicados dentro do próprio backup
+            const seenIds = new Set();
+            for (const t of validated) {
+                if (seenIds.has(t.id)) {
+                    throw new Error(`ID duplicado detectado no arquivo de backup: ${t.id}`);
+                }
+                seenIds.add(t.id);
+            }
+
+            // Aplica com rollback seguro
+            const previousTasks = [...this.tasks];
+            this.tasks = validated;
+
+            if (!this.save()) {
+                this.tasks = previousTasks;
+                throw new Error('Não foi possível persistir as tarefas restauradas no armazenamento local.');
+            }
+            return validated;
         }
 
         getStats() {
@@ -187,11 +257,12 @@
         }
     }
 
-    // Inicialização da Aplicação
+    // Controlador da Interface do Usuário (UI Controller)
     function initApp() {
         const store = new TaskStore();
 
-        // Elementos do DOM
+        // Elementos DOM
+        const appContainer = document.getElementById('appContainer') || document.querySelector('.container');
         const taskForm = document.getElementById('taskForm');
         const taskInput = document.getElementById('taskInput');
         const taskDesc = document.getElementById('taskDesc');
@@ -208,13 +279,13 @@
         const liveFeedback = document.getElementById('liveFeedback');
         const announcer = document.getElementById('screenReaderAnnouncer');
 
-        // Stats
+        // Contadores
         const statTotal = document.getElementById('statTotal');
         const statTodo = document.getElementById('statTodo');
         const statInProgress = document.getElementById('statInProgress');
         const statDone = document.getElementById('statDone');
 
-        // Modal de Confirmação
+        // Modal Acessível
         const confirmModal = document.getElementById('confirmModal');
         const modalConfirmBtn = document.getElementById('modalConfirmBtn');
         const modalCancelBtn = document.getElementById('modalCancelBtn');
@@ -231,11 +302,16 @@
                 liveFeedback.className = 'live-feedback ' + type;
                 setTimeout(() => {
                     if (liveFeedback) liveFeedback.className = 'live-feedback';
-                }, 4000);
+                }, 5000);
             }
             if (announcer) {
                 announcer.textContent = message;
             }
+        }
+
+        // Alerta de dados corrompidos se detectados no boot
+        if (store.corruptedDataDetected) {
+            notifyUser('Aviso de integridade: Dados corrompidos foram detectados e isolados em quarentena de segurança.', 'error');
         }
 
         function updateStats() {
@@ -246,7 +322,7 @@
             if (statDone) statDone.textContent = stats.done;
         }
 
-        // Renderização Segura de Tarefas (Zero innerHTML para dados de usuário)
+        // Renderização Segura de Tarefas (Zero innerHTML para entradas do usuário)
         function renderTasks() {
             if (!taskList) return;
             taskList.innerHTML = '';
@@ -286,7 +362,7 @@
                     li.appendChild(descP);
                 }
 
-                // Critérios (se houver)
+                // Critérios de Aceitação (se houver)
                 if (task.criteria) {
                     const critDiv = document.createElement('div');
                     critDiv.className = 'task-criteria';
@@ -305,11 +381,10 @@
                 metaSpan.textContent = `Criada em: ${createdDate}`;
                 li.appendChild(metaSpan);
 
-                // Ações da Tarefa
+                // Ações da Tarefa com alvos de toque >= 44x44px
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'task-actions';
 
-                // Botões de transição de estado
                 if (task.status === 'TODO') {
                     const startBtn = document.createElement('button');
                     startBtn.type = 'button';
@@ -317,10 +392,14 @@
                     startBtn.textContent = 'Iniciar Tarefa';
                     startBtn.setAttribute('aria-label', `Iniciar tarefa: ${task.title}`);
                     startBtn.onclick = () => {
-                        store.updateStatus(task.id, 'IN_PROGRESS');
-                        notifyUser(`Tarefa "${task.title}" movida para Em Andamento.`);
-                        updateStats();
-                        renderTasks();
+                        try {
+                            store.updateStatus(task.id, 'IN_PROGRESS');
+                            notifyUser(`Tarefa "${task.title}" movida para Em Andamento.`);
+                            updateStats();
+                            renderTasks();
+                        } catch (err) {
+                            notifyUser(err.message, 'error');
+                        }
                     };
                     actionsDiv.appendChild(startBtn);
                 } else if (task.status === 'IN_PROGRESS') {
@@ -330,10 +409,14 @@
                     backBtn.textContent = 'Voltar para A Fazer';
                     backBtn.setAttribute('aria-label', `Voltar tarefa "${task.title}" para A Fazer`);
                     backBtn.onclick = () => {
-                        store.updateStatus(task.id, 'TODO');
-                        notifyUser(`Tarefa "${task.title}" retornada para A Fazer.`);
-                        updateStats();
-                        renderTasks();
+                        try {
+                            store.updateStatus(task.id, 'TODO');
+                            notifyUser(`Tarefa "${task.title}" retornada para A Fazer.`);
+                            updateStats();
+                            renderTasks();
+                        } catch (err) {
+                            notifyUser(err.message, 'error');
+                        }
                     };
                     actionsDiv.appendChild(backBtn);
 
@@ -343,10 +426,14 @@
                     doneBtn.textContent = 'Concluir Tarefa';
                     doneBtn.setAttribute('aria-label', `Concluir tarefa: ${task.title}`);
                     doneBtn.onclick = () => {
-                        store.updateStatus(task.id, 'DONE');
-                        notifyUser(`Tarefa "${task.title}" concluída com sucesso!`);
-                        updateStats();
-                        renderTasks();
+                        try {
+                            store.updateStatus(task.id, 'DONE');
+                            notifyUser(`Tarefa "${task.title}" concluída com sucesso!`);
+                            updateStats();
+                            renderTasks();
+                        } catch (err) {
+                            notifyUser(err.message, 'error');
+                        }
                     };
                     actionsDiv.appendChild(doneBtn);
                 } else if (task.status === 'DONE') {
@@ -356,15 +443,19 @@
                     reopenBtn.textContent = 'Reabrir Tarefa';
                     reopenBtn.setAttribute('aria-label', `Reabrir tarefa: ${task.title}`);
                     reopenBtn.onclick = () => {
-                        store.updateStatus(task.id, 'IN_PROGRESS');
-                        notifyUser(`Tarefa "${task.title}" reaberta para Em Andamento.`);
-                        updateStats();
-                        renderTasks();
+                        try {
+                            store.updateStatus(task.id, 'IN_PROGRESS');
+                            notifyUser(`Tarefa "${task.title}" reaberta para Em Andamento.`);
+                            updateStats();
+                            renderTasks();
+                        } catch (err) {
+                            notifyUser(err.message, 'error');
+                        }
                     };
                     actionsDiv.appendChild(reopenBtn);
                 }
 
-                // Botão de Exclusão (Abre modal acessível)
+                // Botão de Exclusão (Abre modal acessível com foco gerenciado)
                 const deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
                 deleteBtn.className = 'btn btn-danger btn-sm';
@@ -381,7 +472,7 @@
             });
         }
 
-        // Modal Acessível de Exclusão
+        // Modal Acessível de Exclusão com Focus Trap e Bloqueio de Fundo
         function openConfirmModal(task) {
             taskPendingDeletion = task;
             if (confirmModal) {
@@ -389,14 +480,27 @@
                 if (desc) {
                     desc.textContent = `Tem certeza de que deseja excluir a tarefa "${task.title}"? Esta ação não pode ser desfeita.`;
                 }
+
                 confirmModal.classList.add('active');
-                if (modalConfirmBtn) modalConfirmBtn.focus();
+                confirmModal.removeAttribute('aria-hidden');
+
+                // Foco seguro inicial no botão de Cancelar para evitar exclusões acidentais
+                if (modalCancelBtn) {
+                    modalCancelBtn.focus();
+                } else if (modalConfirmBtn) {
+                    modalConfirmBtn.focus();
+                }
+
+                // Isola o fundo para foco e tecnologias assistivas usando o padrão nativo inert
+                if (appContainer) {
+                    appContainer.setAttribute('inert', '');
+                }
             } else {
-                // Fallback gracioso para ambientes de teste sem modal DOM completo
+                // Fallback gracioso em ambientes headless/teste sem modal no DOM
                 if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
                     if (window.confirm(`Excluir "${task.title}"?`)) {
                         store.delete(task.id);
-                        notifyUser(`Tarefa excluída.`);
+                        notifyUser('Tarefa excluída.');
                         updateStats();
                         renderTasks();
                     }
@@ -407,10 +511,21 @@
         function closeConfirmModal() {
             if (confirmModal) {
                 confirmModal.classList.remove('active');
+                confirmModal.setAttribute('aria-hidden', 'true');
             }
+
+            // Desbloqueia o container de fundo
+            if (appContainer) {
+                appContainer.removeAttribute('inert');
+            }
+
             taskPendingDeletion = null;
-            if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+
+            // Devolve o foco a um elemento válido
+            if (lastFocusedElement && typeof lastFocusedElement.focus === 'function' && document.contains(lastFocusedElement)) {
                 lastFocusedElement.focus();
+            } else if (taskInput && typeof taskInput.focus === 'function') {
+                taskInput.focus();
             }
         }
 
@@ -422,23 +537,50 @@
             modalConfirmBtn.onclick = () => {
                 if (taskPendingDeletion) {
                     const title = taskPendingDeletion.title;
-                    store.delete(taskPendingDeletion.id);
-                    notifyUser(`Tarefa "${title}" excluída com sucesso.`);
-                    updateStats();
-                    renderTasks();
+                    try {
+                        store.delete(taskPendingDeletion.id);
+                        notifyUser(`Tarefa "${title}" excluída com sucesso.`);
+                        updateStats();
+                        renderTasks();
+                    } catch (err) {
+                        notifyUser(err.message, 'error');
+                    }
                 }
                 closeConfirmModal();
             };
         }
 
-        // Teclado: Fechar modal no Escape
+        // Focus Trap e Suporte ao Teclado no Modal
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && confirmModal && confirmModal.classList.contains('active')) {
+            if (!confirmModal || !confirmModal.classList.contains('active')) return;
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
                 closeConfirmModal();
+                return;
+            }
+
+            if (e.key === 'Tab') {
+                const focusable = confirmModal.querySelectorAll('button:not([disabled])');
+                if (focusable.length === 0) return;
+                const firstEl = focusable[0];
+                const lastEl = focusable[focusable.length - 1];
+
+                if (e.shiftKey) {
+                    if (document.activeElement === firstEl) {
+                        e.preventDefault();
+                        lastEl.focus();
+                    }
+                } else {
+                    if (document.activeElement === lastEl) {
+                        e.preventDefault();
+                        firstEl.focus();
+                    }
+                }
             }
         });
 
-        // Adicionar Tarefa
+        // Adicionar Tarefa com Tratamento de Erro Explícito
         function handleAddTask(e) {
             if (e && typeof e.preventDefault === 'function') {
                 e.preventDefault();
@@ -454,15 +596,19 @@
             const desc = taskDesc ? taskDesc.value.trim() : '';
             const criteria = taskCriteria ? taskCriteria.value.trim() : '';
 
-            const task = store.add(title, desc, criteria);
-            taskInput.value = '';
-            if (taskDesc) taskDesc.value = '';
-            if (taskCriteria) taskCriteria.value = '';
+            try {
+                const task = store.add(title, desc, criteria);
+                taskInput.value = '';
+                if (taskDesc) taskDesc.value = '';
+                if (taskCriteria) taskCriteria.value = '';
 
-            notifyUser(`Tarefa "${task.title}" adicionada com sucesso!`);
-            updateStats();
-            renderTasks();
-            taskInput.focus();
+                notifyUser(`Tarefa "${task.title}" adicionada com sucesso!`);
+                updateStats();
+                renderTasks();
+                taskInput.focus();
+            } catch (err) {
+                notifyUser(err.message, 'error');
+            }
         }
 
         if (taskForm) {
@@ -472,7 +618,7 @@
             addBtn.addEventListener('click', handleAddTask);
         }
 
-        // Busca Textual Instantânea
+        // Busca Instantânea
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 searchQuery = e.target.value;
@@ -496,36 +642,41 @@
             });
         }
 
-        // Exportação com Digest SHA-256
+        // Exportação com Digest SHA-256 (Identificado como Digest de Integridade Local)
         if (exportBtn) {
             exportBtn.addEventListener('click', async () => {
-                const tasksPayload = JSON.stringify(store.tasks, null, 2);
-                const digest = await calculateSha256(tasksPayload);
-                const exportData = {
-                    version: '1.0.0',
-                    schema: 'task-manager-v1',
-                    exportDate: new Date().toISOString(),
-                    integrityAlgorithm: 'SHA-256',
-                    integrityDigest: digest,
-                    totalTasks: store.tasks.length,
-                    tasks: store.tasks
-                };
+                try {
+                    const tasksPayload = JSON.stringify(store.tasks, null, 2);
+                    const digest = await calculateSha256(tasksPayload);
+                    const exportData = {
+                        version: '1.0.0',
+                        schema: 'task-manager-v1',
+                        exportDate: new Date().toISOString(),
+                        integrityAlgorithm: 'SHA-256',
+                        integrityDigest: digest,
+                        totalTasks: store.tasks.length,
+                        tasks: store.tasks
+                    };
 
-                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `task-manager-backup-${new Date().toISOString().slice(0, 10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `task-manager-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
 
-                notifyUser(`Backup exportado com sucesso (Digest SHA-256: ${digest.slice(0, 8)}...).`);
+                    notifyUser(`Backup exportado com sucesso (Digest de integridade SHA-256: ${digest.slice(0, 8)}...).`);
+                } catch (err) {
+                    console.error('Falha na exportação:', err);
+                    notifyUser(`Falha ao exportar backup: ${err.message}`, 'error');
+                }
             });
         }
 
-        // Importação com Verificação de Integridade
+        // Importação e Restauração com Validação Estrita de Schema e Digest
         if (importBtn && importFileInput) {
             importBtn.addEventListener('click', () => {
                 importFileInput.click();
@@ -538,36 +689,48 @@
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     try {
-                        const parsed = JSON.parse(event.target.result);
-                        if (!parsed || !Array.isArray(parsed.tasks)) {
-                            notifyUser('Erro: O arquivo de backup possui formato inválido.', 'error');
+                        let parsed = null;
+                        try {
+                            parsed = JSON.parse(event.target.result);
+                        } catch (pe) {
+                            notifyUser('Erro de importação: Arquivo não contém um JSON válido.', 'error');
                             return;
                         }
 
-                        // Verificação do digest de integridade (se presente)
-                        if (parsed.integrityDigest) {
-                            const payloadString = JSON.stringify(parsed.tasks, null, 2);
-                            const computed = await calculateSha256(payloadString);
-                            if (computed !== parsed.integrityDigest) {
-                                console.warn('Discrepância no digest SHA-256 do arquivo importado.');
-                                notifyUser('Aviso: O digest de integridade SHA-256 não confere com o arquivo.', 'error');
-                                return;
-                            }
+                        // Validação estrita de formato e schema
+                        if (!parsed || typeof parsed !== 'object') {
+                            notifyUser('Erro de importação: Formato raiz do backup inválido.', 'error');
+                            return;
+                        }
+                        if (parsed.schema !== 'task-manager-v1') {
+                            notifyUser('Erro de importação: Schema incompatível (esperado "task-manager-v1").', 'error');
+                            return;
+                        }
+                        if (parsed.integrityAlgorithm !== 'SHA-256' || typeof parsed.integrityDigest !== 'string' || !/^[0-9a-f]{64}$/i.test(parsed.integrityDigest)) {
+                            notifyUser('Erro de importação: Digest SHA-256 ausente ou malformatado no arquivo.', 'error');
+                            return;
+                        }
+                        if (!Array.isArray(parsed.tasks)) {
+                            notifyUser('Erro de importação: Coleção de tarefas ausente ou inválida.', 'error');
+                            return;
                         }
 
-                        // Importação segura sanitizada
-                        parsed.tasks.forEach(t => {
-                            if (t && t.title) {
-                                store.add(t.title, t.description, t.criteria);
-                            }
-                        });
+                        // Verificação criptográfica do digest de integridade
+                        const payloadString = JSON.stringify(parsed.tasks, null, 2);
+                        const computedDigest = await calculateSha256(payloadString);
+                        if (computedDigest.toLowerCase() !== parsed.integrityDigest.toLowerCase()) {
+                            notifyUser('Falha de integridade: O digest SHA-256 recalculado não confere com o arquivo (backup corrompido ou adulterado).', 'error');
+                            return;
+                        }
 
+                        // Restauração com fidelidade completa de estado (preservando IDs, timestamps e status)
+                        const restored = store.restore(parsed.tasks);
                         updateStats();
                         renderTasks();
-                        notifyUser(`${parsed.tasks.length} tarefas importadas com sucesso!`);
+                        notifyUser(`Restauração concluída: ${restored.length} tarefas restauradas com preservação fiel de IDs e status!`);
                     } catch (err) {
                         console.error('Falha ao processar arquivo de importação:', err);
-                        notifyUser('Erro ao importar arquivo JSON.', 'error');
+                        notifyUser(`Erro na restauração: ${err.message}`, 'error');
                     } finally {
                         importFileInput.value = '';
                     }
@@ -576,13 +739,14 @@
             });
         }
 
-        // Inicializa renderização e estatísticas
+        // Renderização inicial
         updateStats();
         renderTasks();
 
-        // Expõe loja para testes em ambiente de teste
+        // Expõe loja e utilitários para testes automatizados
         if (typeof window !== 'undefined') {
             window.__taskStore = store;
+            window.__calculateSha256 = calculateSha256;
         }
     }
 

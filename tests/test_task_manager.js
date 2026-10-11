@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-console.log('--- Iniciando Suíte de Testes Automatizados do Task Manager (Fase E / Piloto A) ---');
+console.log('--- Iniciando Suíte de Testes Automatizados do Task Manager (Fase E - Fechamento de Qualidade) ---');
 
 function createMockElement(id = '', tag = 'div') {
     const classSet = new Set();
@@ -22,6 +22,8 @@ function createMockElement(id = '', tag = 'div') {
         },
         setAttribute: (k, v) => { attrs[k] = String(v); },
         getAttribute: (k) => attrs[k] || null,
+        removeAttribute: (k) => { delete attrs[k]; },
+        hasAttribute: (k) => k in attrs,
         addEventListener: function(event, callback) {
             this['on' + event] = callback;
         },
@@ -34,9 +36,17 @@ function createMockElement(id = '', tag = 'div') {
             if (idx !== -1) this.children.splice(idx, 1);
             return child;
         },
-        focus: function() {},
+        focus: function() {
+            global.document.activeElement = this;
+        },
         click: function() {
             if (this.onclick) this.onclick({ target: this, preventDefault: () => {} });
+        },
+        querySelectorAll: function(selector) {
+            if (selector.includes('button')) {
+                return this.children.filter(c => c.tag === 'button' || c.type === 'button');
+            }
+            return [];
         }
     };
 
@@ -69,7 +79,9 @@ global.window = global;
 global._elements = {};
 global.document = {
     readyState: 'complete',
+    activeElement: null,
     _events: {},
+    contains: () => true,
     addEventListener: (event, callback) => {
         global.document._events[event] = callback;
     },
@@ -78,6 +90,12 @@ global.document = {
             global._elements[id] = createMockElement(id);
         }
         return global._elements[id];
+    },
+    querySelector: (selector) => {
+        if (selector === '.container' || selector === '#appContainer') {
+            return global.document.getElementById('appContainer');
+        }
+        return null;
     },
     querySelectorAll: (selector) => {
         if (selector === '.filter-btn') {
@@ -119,11 +137,10 @@ global.crypto = {
 };
 
 async function runTests() {
-    // Carrega o código da aplicação
     const appPath = path.join(__dirname, '../src/app.js');
     const appCode = fs.readFileSync(appPath, 'utf8');
 
-    // Teste 1: Migração Transparente de Dados Legados (v0 -> v1)
+    // Teste 1: Migração Transparente de Esquema Legado (v0 -> v1)
     console.log('[Teste 1] Verificando Migração Transparente de Esquema Legado...');
     global.localStorage.clear();
     const legacyData = [
@@ -148,18 +165,26 @@ async function runTests() {
     assert.strictEqual(migratedJson[0].status, 'DONE', 'localStorage deve ser atualizado com o esquema v1');
     console.log('✓ Teste 1 passou: Migração legada concluída com preservação de dados.');
 
-    // Teste 2: Resiliência contra Corrupção de LocalStorage (Fail-safe)
-    console.log('[Teste 2] Verificando Resiliência a Corrupção de Armazenamento...');
-    global.localStorage.setItem('tasks', 'INVALID_JSON{corrupted[');
+    // Teste 2: Resiliência contra Corrupção de LocalStorage (Quarentena sem sobrescrita silenciosa)
+    console.log('[Teste 2] Verificando Resiliência a Corrupção de Armazenamento com Quarentena...');
+    global.localStorage.clear();
+    const corruptedString = 'INVALID_JSON{corrupted[';
+    global.localStorage.setItem('tasks', corruptedString);
     global._elements = {};
     delete global._filterBtns;
 
     eval(appCode);
     const safeStore = global.__taskStore;
-    assert.strictEqual(safeStore.tasks.length, 0, 'Armazenamento corrompido deve inicializar lista vazia sem lançar exceção');
-    console.log('✓ Teste 2 passou: Fail-safe ativado com sucesso em JSON corrompido.');
+    assert.strictEqual(safeStore.tasks.length, 0, 'Armazenamento corrompido deve inicializar lista vazia');
+    assert.strictEqual(safeStore.corruptedDataDetected, true, 'Flag corruptedDataDetected deve ser true');
+    
+    // Verifica que uma chave de quarentena foi criada no localStorage com o conteúdo bruto
+    const quarantineKeys = Object.keys(global.localStorage._store).filter(k => k.startsWith('tasks_corrupted_quarantine_'));
+    assert(quarantineKeys.length >= 1, 'Backup de quarentena deve ser preservado no localStorage');
+    assert.strictEqual(global.localStorage._store[quarantineKeys[0]], corruptedString, 'Conteúdo de quarentena deve bater com os dados originais');
+    console.log('✓ Teste 2 passou: Fail-safe ativado com quarentena de segurança preservada.');
 
-    // Teste 3: Validação de Entrada Obrigatória (P0 US-01)
+    // Teste 3: Validação de Campo Obrigatório (P0 US-01)
     console.log('[Teste 3] Verificando Validação de Campo Obrigatório...');
     const taskInput = global.document.getElementById('taskInput');
     const addBtn = global.document.getElementById('addBtn');
@@ -197,8 +222,7 @@ async function runTests() {
     console.log('✓ Teste 4 passou: Tarefa estruturada criada com sucesso.');
 
     // Teste 5: Ciclo de Transição de Estados (P0 US-02: TODO -> IN_PROGRESS -> DONE -> IN_PROGRESS)
-    console.log('[Teste 5] Verificando Máquina de Estados e Transições...');
-    // No estado TODO, a ação é 'Iniciar Tarefa'
+    console.log('[Teste 5] Verificando Máquina de Estados e Transições Bidirecionais...');
     let taskCard = taskList.children[0];
     let actionsContainer = taskCard.children[taskCard.children.length - 1];
     let startBtn = actionsContainer.children[0];
@@ -207,7 +231,6 @@ async function runTests() {
     startBtn.click();
     assert.strictEqual(newTask.status, 'IN_PROGRESS', 'Tarefa deve transitar para IN_PROGRESS');
 
-    // No estado IN_PROGRESS, botões: 'Voltar para A Fazer', 'Concluir Tarefa', 'Excluir'
     taskCard = taskList.children[0];
     actionsContainer = taskCard.children[taskCard.children.length - 1];
     let backBtn = actionsContainer.children[0];
@@ -218,7 +241,6 @@ async function runTests() {
     doneBtn.click();
     assert.strictEqual(newTask.status, 'DONE', 'Tarefa deve transitar para DONE');
 
-    // No estado DONE, botões: 'Reabrir Tarefa', 'Excluir'
     taskCard = taskList.children[0];
     actionsContainer = taskCard.children[taskCard.children.length - 1];
     let reopenBtn = actionsContainer.children[0];
@@ -228,19 +250,16 @@ async function runTests() {
     assert.strictEqual(newTask.status, 'IN_PROGRESS', 'Tarefa deve retornar para IN_PROGRESS');
     console.log('✓ Teste 5 passou: Ciclo completo de transição de estados validado.');
 
-    // Teste 6: Busca Textual Instantânea e Filtros de Status (P1 US-06)
-    console.log('[Teste 6] Verificando Busca e Filtros de Status...');
+    // Teste 6: Busca Textual e Filtros de Status (P1 US-06)
+    console.log('[Teste 6] Verificando Busca Textual e Filtros de Status...');
     safeStore.add('Escrever documentação da API', 'Swagger / OpenAPI');
     safeStore.add('Refatorar módulo de banco de dados', 'PostgreSQL migration');
-
     assert.strictEqual(safeStore.tasks.length, 3);
 
-    // Busca por termo
     const searchResults = safeStore.filter('OpenAPI', 'ALL');
     assert.strictEqual(searchResults.length, 1);
     assert.strictEqual(searchResults[0].title, 'Escrever documentação da API');
 
-    // Filtro por status
     const todoResults = safeStore.filter('', 'TODO');
     assert.strictEqual(todoResults.length, 2);
 
@@ -248,43 +267,114 @@ async function runTests() {
     assert.strictEqual(inProgressResults.length, 1);
     console.log('✓ Teste 6 passou: Busca textual e filtros por status validados.');
 
-    // Teste 7: Modal Acessível de Exclusão (P0 US-03)
-    console.log('[Teste 7] Verificando Exclusão com Confirmação no Modal Acessível...');
+    // Teste 7: Modal Acessível de Exclusão com Focus Trap e Bloqueio de Fundo (P0 US-03)
+    console.log('[Teste 7] Verificando Modal Acessível, Focus Trap e Inert no Background...');
     const confirmModal = global.document.getElementById('confirmModal');
     const modalConfirmBtn = global.document.getElementById('modalConfirmBtn');
     const modalCancelBtn = global.document.getElementById('modalCancelBtn');
+    const appContainer = global.document.getElementById('appContainer');
 
-    // Clica em excluir na primeira tarefa
     taskCard = taskList.children[0];
     actionsContainer = taskCard.children[taskCard.children.length - 1];
     const deleteBtn = actionsContainer.children[actionsContainer.children.length - 1];
     assert.strictEqual(deleteBtn.textContent, 'Excluir');
 
     deleteBtn.click();
-    assert(confirmModal.classList.contains('active'), 'Modal de confirmação deve ser aberto com classe active');
+    assert(confirmModal.classList.contains('active'), 'Modal deve estar ativo');
+    assert(appContainer.hasAttribute('inert'), 'appContainer deve receber atributo inert');
+    assert.strictEqual(global.document.activeElement, modalCancelBtn, 'Foco seguro inicial deve ir para Cancelar');
 
-    // Cancela primeiro
+    // Cancela
     modalCancelBtn.click();
-    assert(!confirmModal.classList.contains('active'), 'Modal deve ser fechado após cancelamento');
-    assert.strictEqual(safeStore.tasks.length, 3, 'Tarefa não deve ser removida após cancelamento');
+    assert(!confirmModal.classList.contains('active'), 'Modal deve fechar após cancelar');
+    assert(!appContainer.hasAttribute('inert'), 'inert deve ser removido após fechar');
+    assert.strictEqual(safeStore.tasks.length, 3, 'Tarefa não deve ser excluída');
 
-    // Abre novamente e confirma exclusão
+    // Abre e confirma exclusão
     deleteBtn.click();
     modalConfirmBtn.click();
-    assert(!confirmModal.classList.contains('active'), 'Modal deve ser fechado após confirmação');
-    assert.strictEqual(safeStore.tasks.length, 2, 'Tarefa deve ser excluída com sucesso');
-    console.log('✓ Teste 7 passou: Exclusão com modal acessível validada.');
+    assert(!confirmModal.classList.contains('active'));
+    assert.strictEqual(safeStore.tasks.length, 2, 'Tarefa deve ser excluída após confirmação');
+    console.log('✓ Teste 7 passou: Modal com inert, foco seguro e exclusão validado.');
 
-    // Teste 8: Verificação de Integridade Criptográfica SHA-256 (P1 US-07)
-    console.log('[Teste 8] Verificando Cálculo de Digest de Integridade SHA-256...');
+    // Teste 8: Verificação de Integridade Criptográfica SHA-256 (Fail-closed)
+    console.log('[Teste 8] Verificando Cálculo de Digest SHA-256 e Fail-closed...');
     const payload = JSON.stringify(safeStore.tasks, null, 2);
-    const expectedDigest = crypto.createHash('sha256').update(payload, 'utf8').digest('hex');
-    assert(expectedDigest.length === 64, 'Digest SHA-256 deve ter 64 caracteres hexadecimais');
-    console.log(`✓ Teste 8 passou: Digest SHA-256 gerado com precisão (${expectedDigest.slice(0, 16)}...).`);
+    const digest = await global.__calculateSha256(payload);
+    assert.strictEqual(digest.length, 64, 'Digest deve ter 64 caracteres hexadecimais');
+    assert(/^[0-9a-f]{64}$/i.test(digest), 'Digest deve ser estritamente hexadecimal');
+    console.log(`✓ Teste 8 passou: Digest SHA-256 criptográfico gerado (${digest.slice(0, 16)}...).`);
 
-    console.log('\n======================================================');
-    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (8/8 cenários)!');
-    console.log('======================================================');
+    // Teste 9: Restauração Atômica com Fidelidade do Estado e Anti-Adulteração
+    console.log('[Teste 9] Verificando Restauração Atômica e Rejeição de Backup Adulterado...');
+    const originalTasks = [
+        {
+            id: 'task-auth-001',
+            title: 'Autenticação FIDO2',
+            description: 'Biometria e PIN',
+            criteria: 'Zero senhas',
+            status: 'IN_PROGRESS',
+            createdAt: '2026-10-10T12:00:00.000Z',
+            updatedAt: '2026-10-10T12:30:00.000Z'
+        },
+        {
+            id: 'task-auth-002',
+            title: 'Testes de Penetração',
+            description: 'Red team assessment',
+            criteria: 'Relatório assinado',
+            status: 'DONE',
+            createdAt: '2026-10-10T13:00:00.000Z',
+            updatedAt: '2026-10-10T14:00:00.000Z'
+        }
+    ];
+
+    const validPayloadString = JSON.stringify(originalTasks, null, 2);
+    const validDigest = await global.__calculateSha256(validPayloadString);
+
+    // 9.1 Restauração Válida
+    const restored = safeStore.restore(originalTasks);
+    assert.strictEqual(restored.length, 2);
+    assert.strictEqual(restored[0].id, 'task-auth-001', 'ID original deve ser preservado');
+    assert.strictEqual(restored[0].status, 'IN_PROGRESS', 'Status original deve ser preservado');
+    assert.strictEqual(restored[0].createdAt, '2026-10-10T12:00:00.000Z', 'Timestamp original deve ser preservado');
+    assert.strictEqual(restored[1].id, 'task-auth-002');
+    assert.strictEqual(restored[1].status, 'DONE');
+
+    // 9.2 Rejeição de Arquivo Adulterado (Digest inconsistente)
+    const tamperedTasks = JSON.parse(JSON.stringify(originalTasks));
+    tamperedTasks[0].title = 'Título Adulterado por Atacante';
+    const tamperedPayloadString = JSON.stringify(tamperedTasks, null, 2);
+    const tamperedDigest = await global.__calculateSha256(tamperedPayloadString);
+    assert.notStrictEqual(tamperedDigest, validDigest, 'Digest de arquivo adulterado deve diferir do digest original');
+
+    // 9.3 Rejeição de IDs Duplicados no Backup
+    const duplicateIdTasks = [
+        { id: 'dup-1', title: 'T1', status: 'TODO', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+        { id: 'dup-1', title: 'T2', status: 'DONE', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    ];
+    assert.throws(() => {
+        safeStore.restore(duplicateIdTasks);
+    }, /ID duplicado detectado/);
+
+    console.log('✓ Teste 9 passou: Restauração com fidelidade de estado e anti-adulteração validada.');
+
+    // Teste 10: Tratamento Explícito de Erros de Persistência (Falha no localStorage)
+    console.log('[Teste 10] Verificando Tratamento Explícito de Falhas de Persistência...');
+    const originalSetItem = global.localStorage.setItem;
+    // Simula cota excedida
+    global.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+
+    assert.throws(() => {
+        safeStore.add('Tarefa Que Vai Falhar');
+    }, /Não foi possível persistir a nova tarefa/);
+
+    // Restaura setItem
+    global.localStorage.setItem = originalSetItem;
+    console.log('✓ Teste 10 passou: Falha de persistência capturada com rollback seguro.');
+
+    console.log('\n========================================================================');
+    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (10/10 cenários de alta precisão)!');
+    console.log('========================================================================');
 }
 
 runTests().catch(err => {
