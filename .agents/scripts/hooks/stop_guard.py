@@ -2,6 +2,7 @@ import sys
 import json
 import os
 import re
+import sqlite3
 from pathlib import Path
 
 def resolve_workspace_root(data):
@@ -35,6 +36,68 @@ def get_actionable_pending_reviews(workspace_root, run_id):
         return pending
     except Exception:
         return []
+
+def record_and_check_attempt(workspace_root, run_id, conv_id):
+    """
+    Persistencia atomica e transacional via SQLite para contagem de tentativas
+    por (run_id, conv_id) sem perda de atualizacao por corrida e sem colisao de IDs por truncamento (F08).
+    Retorna o numero de tentativas registradas nesta transacao.
+    """
+    state_dir = workspace_root / ".agents" / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    db_path = state_dir / "stop_attempts.db"
+
+    conn = sqlite3.connect(str(db_path), isolation_level=None, timeout=15.0)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS stop_attempts (
+                run_id TEXT NOT NULL,
+                conv_id TEXT NOT NULL,
+                attempts INTEGER NOT NULL,
+                PRIMARY KEY (run_id, conv_id)
+            )
+        """)
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT attempts FROM stop_attempts WHERE run_id = ? AND conv_id = ?", (run_id, conv_id))
+            row = cur.fetchone()
+            current = row[0] if row else 0
+            new_attempts = current + 1
+            if row:
+                cur.execute("UPDATE stop_attempts SET attempts = ? WHERE run_id = ? AND conv_id = ?", (new_attempts, run_id, conv_id))
+            else:
+                cur.execute("INSERT INTO stop_attempts (run_id, conv_id, attempts) VALUES (?, ?, ?)", (run_id, conv_id, new_attempts))
+            conn.execute("COMMIT")
+            return new_attempts
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+    finally:
+        conn.close()
+
+def clear_attempt(workspace_root, run_id, conv_id):
+    """
+    Remove o registro de tentativas da chave (run_id, conv_id) ao finalizar ou esgotar limites.
+    """
+    state_dir = workspace_root / ".agents" / "state"
+    db_path = state_dir / "stop_attempts.db"
+    if not db_path.exists():
+        return
+    try:
+        conn = sqlite3.connect(str(db_path), isolation_level=None, timeout=15.0)
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute("DELETE FROM stop_attempts WHERE run_id = ? AND conv_id = ?", (run_id, conv_id))
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+        finally:
+            conn.close()
+    except Exception:
+        pass
 
 def main():
     try:
@@ -74,36 +137,19 @@ def main():
         # 3. Derivar pendencias reais do modelo canonico de org_v5/control.py (R08)
         actionable_pending = get_actionable_pending_reviews(workspace_root, current_run_id) if current_run_id != "no_run" else []
 
-        # 4. Chave de estado composta e isolada por run + conversa (R07)
-        safe_conv = re.sub(r'[^a-zA-Z0-9_\-]', '_', conv_id)[:32] or "default"
-        safe_run = re.sub(r'[^a-zA-Z0-9_\-]', '_', current_run_id)[:32] or "no_run"
-        state_dir = workspace_root / ".agents" / "state"
-        state_dir.mkdir(parents=True, exist_ok=True)
-        state_file = state_dir / f"stop_attempts_{safe_run}_{safe_conv}.txt"
-
-        attempts = 0
-        if state_file.exists():
-            try:
-                attempts = int(state_file.read_text(encoding="utf-8").strip())
-            except Exception:
-                attempts = 0
-
-        if actionable_pending and attempts < 2:
-            attempts += 1
-            state_file.write_text(str(attempts), encoding="utf-8")
-            pending_desc = ", ".join(actionable_pending[:3])
-            print(json.dumps({
-                "decision": "continue",
-                "reason": f"Pendencia acionavel detectada no modelo canonico ({pending_desc}). Tentativa {attempts}/2."
-            }))
-            return
+        # 4. Controle transacional atomico sem colisao ou corrida (F08)
+        if actionable_pending:
+            attempts = record_and_check_attempt(workspace_root, current_run_id, conv_id)
+            if attempts <= 2:
+                pending_desc = ", ".join(actionable_pending[:3])
+                print(json.dumps({
+                    "decision": "continue",
+                    "reason": f"Pendencia acionavel detectada no modelo canonico ({pending_desc}). Tentativa {attempts}/2."
+                }))
+                return
 
         # Permitir encerramento e limpar estado da chave desta execucao
-        if state_file.exists():
-            try:
-                state_file.unlink()
-            except Exception:
-                pass
+        clear_attempt(workspace_root, current_run_id, conv_id)
         print(json.dumps({"decision": "terminate", "reason": "Sem pendencias verificaveis ou limite de tentativas atingido."}))
 
     except Exception as e:

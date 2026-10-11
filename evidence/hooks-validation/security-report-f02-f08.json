@@ -1,0 +1,110 @@
+{
+  "id": "sec-report-hooks-v52-f02-f08",
+  "run_id": "RUN-2026-10-0001",
+  "version": "5.0",
+  "kind": "security-report",
+  "role": "security-reviewer",
+  "status": "submitted",
+  "summary": "Parecer independente de auditoria de seguranca dos hooks V5.2 (F02, F03, F04, F07, F08). Validacao de confinamento de caminhos, protecao do Core, isolamento de incidentes e analise de limites tecnicos locais vs barreiras remotas GitHub.",
+  "input_ids": [
+    "build-f02-f08-hooks",
+    "evidence-h01-h16-adversarial"
+  ],
+  "evidence_refs": [
+    "evidence/hooks-validation/H01-H16.md",
+    "tests/test_hooks_adversarial_e.py"
+  ],
+  "verdict": "PASS",
+  "execution": {
+    "real_execution": true,
+    "command": ".\\.venv\\Scripts\\python.exe -m unittest tests.test_hooks_adversarial_e",
+    "exit_code": 0,
+    "output_ref": "evidence/hooks-validation/H01-H16.md",
+    "tool": "unittest",
+    "version": "3.14",
+    "started_at": "2026-10-11T16:00:18Z",
+    "finished_at": "2026-10-11T16:00:25Z",
+    "environment": "Windows 11 / Antigravity 2.0 / Python 3.14",
+    "commit_sha": "d30f4c1"
+  },
+  "sections": {
+    "threats": [
+      {
+        "threat_id": "THREAT-01",
+        "name": "Path Traversal e Vazamento de Segredos (F03 / H05 / H06)",
+        "description": "Tentativas de ler ou escrever fora do workspace via ../, drives absolutos ou acessar arquivos de credenciais (.env, chaves privadas, tokens).",
+        "severity": "CRITICAL"
+      },
+      {
+        "threat_id": "THREAT-02",
+        "name": "Corrupcao Indireta do Core da Organizacao via Shell (F04 / H15)",
+        "description": "Mutacao de arquivos em .agents/, org_v5/, AGENTS.md atraves de comandos CLI (python -c, powershell, redirecionamento >, git checkout/restore).",
+        "severity": "HIGH"
+      },
+      {
+        "threat_id": "THREAT-03",
+        "name": "Execucao Mutavel sob Incidentes / Kill Switch (F02 / H09 / H10)",
+        "description": "Execucao de testes mutaveis, scripts ou alteracoes no workspace durante estados STOP ou ESCALATED/PAUSED.",
+        "severity": "HIGH"
+      },
+      {
+        "threat_id": "THREAT-04",
+        "name": "Bypass de Hook via Falha de Runtime (Fail-Open do Host)",
+        "description": "Se o subprocesso do hook falhar, der timeout ou nao executar, o runtime do IDE opera em fail-open, permitindo operacoes perigosas.",
+        "severity": "HIGH"
+      }
+    ],
+    "scans": [
+      "adversarial-test-runner-tests.test_hooks_adversarial_e",
+      "static-policy-analyzer-pretool_rules.json",
+      "code-audit-pretool_guard.py"
+    ],
+    "scan_outputs": {
+      "test_hooks_adversarial_e": "Ran 18 tests in 6.844s - OK (18 passed, 0 failures, 0 errors, 0 skipped)",
+      "live_guard_probe": "Interceptacao em tempo real confirmada (bloqueio de acesso a caminhos fora do workspace e segredos)",
+      "policy_lint": "Estrutura JSON valida com 10 regras deny, 4 regras force_ask e 8 regras allow estritas"
+    },
+    "manual_checks": [
+      {
+        "item": "F03 - Confinamento de Caminhos",
+        "verified": true,
+        "detail": "validate_workspace_path resolve via Path.resolve() e aplica relative_to(base). Escape por ../, unidades de disco diferentes e caracteres nulos sao rejeitados com ValueError/deny. is_secret_path bloqueia padroes .env (exceto templates), chaves *.pem, *.key, credenciais e tfstate."
+      },
+      {
+        "item": "F04 - Protecao do Core contra Mutacao Indireta",
+        "verified": true,
+        "detail": "Sob PROTECT_ORG ativo, pretool_guard intercepta comandos run_command referenciando .agents, org_v5, AGENTS.md ou PROTECT_ORG combinados com padroes de mutacao (python -c/-m, node, powershell, rm, Set-Content, >, >>, git apply/checkout/restore/clean). Escritas via ferramentas de arquivo sao negadas por prefixo."
+      },
+      {
+        "item": "F02 - Isolamento de Incidentes (STOP / ESCALATED)",
+        "verified": true,
+        "detail": "Sob STOP ou ESCALATED/PAUSED, ferramentas de leitura sao restritas ao workspace seguro. run_command bloqueia runners de teste (unittest, node tests, run-tests), shells e scripts arbitrarios. Apenas git de inspecao (status, diff, log, branch, show) e which/where sao permitidos. A unica mutacao permitida e utf8_writer.py restrito a evidence/, runs/, logs/ sem escapes."
+      },
+      {
+        "item": "Fail-Open Host Mitigation vs GitHub",
+        "verified": true,
+        "detail": "O tratamento interno de excecoes em pretool_guard emite 'deny' (fail-closed interno). O comportamento fail-open do runtime do IDE externo em caso de timeout/crash fatal e mitigado e governado: hooks locais sao defesa-em-profundidade; protecao de branch no GitHub e revisao humana permanecem a barreira definitiva obrigatoria."
+      }
+    ],
+    "findings": [
+      {
+        "finding_id": "FINDING-01",
+        "severity": "INFO",
+        "title": "Dependencia da barreira remota GitHub para protecao de branch main/master",
+        "description": "Embora git push origin main e git push --force sejam interceptados localmente no matcher pelo pretool_guard, um crash fatal ou timeout do runtime do IDE local pode degradar para fail-open. A protecao do repositorio contra merge ou push direto na main deve ser garantida pelas regras de protecao de branch no servidor GitHub."
+      },
+      {
+        "finding_id": "FINDING-02",
+        "severity": "INFO",
+        "title": "Capacidade H11 (Loop improdutivo) postergada com transparencia",
+        "description": "A capacidade de deteccao de repeticao improdutiva (H11) foi honestamente rotulada como NOT_VERIFIED/DEFERRED, evitando falsificacao de cobertura ou testes simulados."
+      }
+    ],
+    "risk_rating": "LOW (com controles locais ativos e barreiras remotas no GitHub)",
+    "evidence": [
+      "18 testes adversariais executados com sucesso em .venv/Scripts/python.exe -m unittest tests.test_hooks_adversarial_e (exit code 0).",
+      "Interceptacao empirica em tempo real observada durante a auditoria (bloqueio de acesso externo fora da raiz do projeto).",
+      "Matriz de validacao de hooks auditada e registrada em evidence/hooks-validation/H01-H16.md."
+    ]
+  }
+}

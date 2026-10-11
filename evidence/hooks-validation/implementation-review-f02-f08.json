@@ -1,0 +1,41 @@
+{
+  "id": "impl-review-hooks-v52-f02-f08",
+  "run_id": "RUN-2026-10-0001",
+  "version": "5.0",
+  "kind": "implementation-review",
+  "role": "implementation-reviewer",
+  "status": "submitted",
+  "summary": "Auditoria de implementacao e parecer formal de Gate B para os hooks V5.2 (F02, F03, F04, F07, F08) e matriz de conformidade H01-H16. Verificacao de separacao de papeis, confinamento de caminhos, protecao do Core, resiliencia transacional concorrente e integridade dos testes automatizados.",
+  "input_ids": [
+    "build-f02-f08-hooks",
+    "sec-report-hooks-v52-f02-f08",
+    "evidence-h01-h16-adversarial",
+    "gate-b-manifest-v52-hooks"
+  ],
+  "evidence_refs": [
+    "evidence/hooks-validation/gate-b-manifest.json",
+    "evidence/hooks-validation/H01-H16.md",
+    "evidence/hooks-validation/security-report-f02-f08.json",
+    "tests/test_hooks_adversarial_e.py"
+  ],
+  "verdict": "ACCEPT",
+  "sections": {
+    "contracts": {
+      "evaluation": "CONFORME",
+      "details": "Verificacao executiva dos 19 contratos definidos em org_v5/contracts.py. O validador Gate A (.agents/scripts/org_check.py) foi estendido (F07) com validacao profunda do schema de pretool_rules.json (checagem de formato, tipos, unicidade de IDs e compilacao estrita de regex), executando com 0 erros. A separacao estrita de papeis foi confirmada em todos os estagios: o desenvolvedor (dev-v5.2) nao revisa os proprios artefatos; o security-reviewer emitiu parecer independente no documento sec-report-hooks-v52-f02-f08; o implementation-reviewer atua de forma autonoma como auditor sênior sem autoaprovacao (prod_id != rev_id)."
+    },
+    "tests": {
+      "evaluation": "CONFORME",
+      "details": "Execucao real e auditada de todas as suites de testes: (1) Suite unificada python (.venv/Scripts/python.exe -m org_v5.cli run-tests) obteve 84/84 testes aprovados (100% clean_pass, exit_code 0); (2) Suite adversarial de hooks (tests/test_hooks_adversarial_e.py) executou 18/18 cenarios com sucesso em ambiente isolado tempfile sem contaminar o repositorio; (3) Suite JavaScript Node.js (tests/test_task_manager.js) obteve 13/13 testes aprovados, incluindo cenarios adversariais de fail-closed, quarentena e reinicializacao atomica transacional."
+    },
+    "policy_effectiveness": {
+      "evaluation": "EFICAZ E OBSERVAVEL",
+      "details": "A efetividade das politicas foi empiricamente comprovada tanto pelos testes automatizados quanto pela operacao em tempo real no host Antigravity: (1) F03: Confinamento de caminhos via validate_workspace_path bloqueou tentativas de leitura/escrita fora do workspace (inclusive bloqueio ao vivo de caminho externo em downloads verificado durante esta auditoria) e rejeitou caminhos de segredos (.env, pem, tokens); (2) F04: Sob PROTECT_ORG em LOCKED, qualquer tentativa de mutacao no Core via comandos shell (python -c, powershell, tee, >, git apply/checkout) ou ferramentas de arquivo e sumariamente bloqueada com deny; (3) F02: Estados de parada STOP e ESCALATED/PAUSED bloqueiam ferramentas de mutacao e runners de teste enquanto permitem diagnosticos e registro de evidencias em evidence/, runs/, logs/ sem caminhos relativos de escape; (4) F08: stop_guard implementou controle concorrente com SQLite em modo WAL e transacao imediata, eliminando condicoes de corrida e colisoes de truncamento de ID."
+    },
+    "gaps": {
+      "evaluation": "RISCO RESIDUAL GOVERNADO E DOCUMENTADO",
+      "details": "Identificacao e governanca explicita dos seguintes limites tecnicos: (1) H11 (Deteccao de repeticao improdutiva/looping) foi honestamente documentado como NOT_VERIFIED / DEFERRED na matriz H01-H16, evitando testes mock falsos e registrando aceite formal de risco residual para a etapa de produto; (2) H12 e H15 possuem referencias individualizadas e verificaveis no log de telemetria (telemetry/events.jsonl) e testes adversariais; (3) Fail-open externo do host Antigravity em caso de timeout/crash do subprocesso de hook e mitigado pelo fail-closed interno do pretool_guard e pela barreira definitiva de branch protection do GitHub no servidor remoto; (4) Identidade dos agentes opera em SANDBOX_PROVISIONAL/ROLE_ONLY de acordo com a politica TURBO_SANDBOX, mantendo o bloqueio fail-closed de deploy e merge em main ate autorizacao humana verificada."
+    },
+    "verdict": "ACCEPT - Aprovado integralmente no Gate B e recomendado para submissao como CANDIDATE_FOR_HOMOLOGATION"
+  }
+}

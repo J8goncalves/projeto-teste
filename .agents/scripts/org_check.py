@@ -57,7 +57,7 @@ def run_gate_a():
         except Exception as e:
             errors.append(f'invalid hooks.json syntax: {str(e)}')
 
-    # 4. pretool_rules.json
+    # 4. pretool_rules.json (F07 - validacao profunda de schema, tipos, regex e unicidade de IDs)
     rules_path = root / '.agents' / 'policies' / 'pretool_rules.json'
     if not rules_path.exists():
         errors.append('missing pretool_rules.json')
@@ -66,10 +66,45 @@ def run_gate_a():
             rules_data = json.loads(rules_path.read_text(encoding='utf-8'))
             if not isinstance(rules_data, dict) or rules_data.get("version") != "5.2":
                 errors.append('invalid pretool_rules.json: expected version 5.2')
-            if not isinstance(rules_data.get("deny_rules"), list):
-                errors.append('invalid pretool_rules.json: deny_rules must be a list')
-            if not isinstance(rules_data.get("allow_rules"), list):
-                errors.append('invalid pretool_rules.json: allow_rules must be a list')
+
+            seen_rule_ids = set()
+            for list_name in ("deny_rules", "force_ask_rules", "allow_rules"):
+                rules_list = rules_data.get(list_name)
+                if not isinstance(rules_list, list):
+                    errors.append(f'invalid pretool_rules.json: {list_name} must be a list')
+                    continue
+
+                for idx, rule in enumerate(rules_list):
+                    if not isinstance(rule, dict):
+                        errors.append(f'invalid rule in {list_name}[{idx}]: must be a dict')
+                        continue
+
+                    rule_id = rule.get("id")
+                    tools = rule.get("tools")
+                    condition = rule.get("condition")
+
+                    if not rule_id or not isinstance(rule_id, str) or not rule_id.strip():
+                        errors.append(f'invalid rule in {list_name}[{idx}]: missing or invalid id')
+                    elif rule_id in seen_rule_ids:
+                        errors.append(f'duplicate rule id in pretool_rules.json: {rule_id}')
+                    else:
+                        seen_rule_ids.add(rule_id)
+
+                    if not isinstance(tools, list) or not tools or not all(isinstance(t, str) and t.strip() for t in tools):
+                        errors.append(f'invalid rule {rule_id or idx} in {list_name}: tools must be a non-empty list of strings')
+
+                    if not condition or not isinstance(condition, str) or not condition.strip():
+                        errors.append(f'invalid rule {rule_id or idx} in {list_name}: missing or invalid condition')
+
+                    pattern = rule.get("pattern")
+                    if pattern is not None:
+                        if not isinstance(pattern, str):
+                            errors.append(f'invalid pattern type in rule {rule_id or idx}: pattern must be a string')
+                        else:
+                            try:
+                                re.compile(pattern)
+                            except re.error as re_err:
+                                errors.append(f'invalid regex pattern in rule {rule_id or idx}: {str(re_err)}')
         except Exception as e:
             errors.append(f'invalid pretool_rules.json syntax: {str(e)}')
 

@@ -1,0 +1,81 @@
+{
+  "manifest_id": "GATE-B-MANIFEST-V52-HOOKS-ENTREGA-1",
+  "run_id": "RUN-2026-10-0001",
+  "version": "5.2",
+  "timestamp": "2026-10-11T16:15:00Z",
+  "git": {
+    "branch": "feature/v5.2-entrega-1-hooks",
+    "baseline_commit": "d30f4c18130a91a25a39bc0ab591e4b4dd8ef973",
+    "status": "Aprovado para homologação em branch de sandbox"
+  },
+  "gate_a_technical_ci": {
+    "status": "PASS",
+    "roles": 19,
+    "contracts": 19,
+    "command": ".venv/Scripts/python.exe .agents/scripts/org_check.py"
+  },
+  "test_suites": {
+    "python_unified": {
+      "command": ".venv/Scripts/python.exe -m org_v5.cli run-tests",
+      "total": 84,
+      "passed": 84,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "clean_pass": true,
+      "exit_code": 0
+    },
+    "python_adversarial": {
+      "command": ".venv/Scripts/python.exe -m unittest tests.test_hooks_adversarial_e",
+      "total": 18,
+      "passed": 18,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    "node_task_manager": {
+      "command": "node tests/test_task_manager.js",
+      "total": 13,
+      "passed": 13,
+      "failed": 0,
+      "exit_code": 0
+    }
+  },
+  "component_sha256_digests": {
+    ".agents/hooks.json": "0FBD6DDF5AE0C5EEA965006B608B51DE9607B60C236BFF30E63F7EE44D26AF2C",
+    ".agents/policies/pretool_rules.json": "217F55C67350718AAD8EA92E2BBE80AB19496B076F899F4FF91D91AF0B673D2C",
+    ".agents/scripts/hooks/pretool_guard.py": "89B6775C492E309B2D35EA9586A2FF8EDCBEB56B156C6B0BEEFFF22BA8BBCA9D",
+    ".agents/scripts/hooks/posttool_events.py": "3CC56171FCD0C53ACA4D9094AA265F4BDC640DD7105907A539B43D5A51583599",
+    ".agents/scripts/hooks/postinvocation_budget.py": "73CCCD6E5B3688C3FB80564394CD0F0DDE4CFE7269766FEA7AA9E84F185A2B2B",
+    ".agents/scripts/hooks/stop_guard.py": "E3750A4C67CBF2097FF49B1430EB8752768B64DC67CD2EAA926CF541596DA357",
+    ".agents/scripts/org_check.py": "842AB26CE7FB9A2B37C6D10EE8979B9C70CEA3B51BD7B2F901B748A65E8C1AB2",
+    "tests/test_hooks_adversarial_e.py": "E7619E8C0D0F180D631035EAF0DA4C6FCDA11C5FA4DFEE5887E9C4C028B6BAB1",
+    "evidence/hooks-validation/H01-H16.md": "DB928CB09409BD5F056625CB660C00CF85AC1C65C68FEB028BFE5DBAD44A6681",
+    "evidence/hooks-validation/security-report-f02-f08.json": "F9844150B151E415752A13CEC1AA4E61F1CDA9BECFE39CAFE10B41AAE5FBE345"
+  },
+  "matrix_h01_h16_audit": {
+    "H01_PostToolUse_benign": "PASS (REAL_ANTIGRAVITY)",
+    "H02_PreToolUse_probe_contract": "PASS (REAL_ANTIGRAVITY)",
+    "H03_Git_force_push_blocked": "PASS (UNIT + INTEGRATION)",
+    "H04_Git_main_push_blocked": "PASS (UNIT + INTEGRATION)",
+    "H05_Secrets_leak_blocked": "PASS (UNIT + INTEGRATION)",
+    "H06_Workspace_escape_blocked": "PASS (UNIT + INTEGRATION)",
+    "H07_Compound_command_downgrade": "PASS (UNIT + INTEGRATION)",
+    "H08_Routine_commands_frictionless": "PASS (UNIT + INTEGRATION)",
+    "H09_Kill_switch_stop_blocked": "PASS (INTEGRATION)",
+    "H10_Incident_states_blocked": "PASS (INTEGRATION)",
+    "H11_Loop_detection": "NOT_VERIFIED/DEFERRED (Risco residual aceito formalmente; evitou-se teste mock falso)",
+    "H12_Subagent_delegation": "PASS (REAL_ANTIGRAVITY + INTEGRATION, ref: telemetry/events.jsonl)",
+    "H13_Invocation_tool_counts": "PASS (INTEGRATION, ref: usage.jsonl)",
+    "H14_Fail_closed_internal_exception": "PASS (UNIT)",
+    "H15_Protect_org_core_mutation_blocked": "PASS (REAL_ANTIGRAVITY + INTEGRATION, interceptacao observada)",
+    "H16_Stop_hook_canonical_concurrency": "PASS (INTEGRATION, sqlite WAL)"
+  },
+  "governance": {
+    "role_separation": "VALIDATED (prod_id != rev_id em todos os handoffs)",
+    "self_approval": "NONE DETECTED",
+    "identity_assurance": "UNVERIFIED/ROLE_ONLY (local) / SANDBOX_PROVISIONAL (reviews)",
+    "recommendation": "CANDIDATE_FOR_HOMOLOGATION"
+  }
+}
