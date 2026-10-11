@@ -1,0 +1,51 @@
+{
+  "hook_invoked": true,
+  "hook_event": "PreToolUse",
+  "original_cwd": "d:\\Antigravity Projects\\projeto-teste\\.agents",
+  "workspace_root": "d:\\Antigravity Projects\\projeto-teste",
+  "top_level_keys": [
+    "artifactDirectoryPath",
+    "conversationId",
+    "modelName",
+    "stepIdx",
+    "toolCall",
+    "transcriptPath",
+    "workspacePaths"
+  ],
+  "keys_types": {
+    "artifactDirectoryPath": "str",
+    "conversationId": "str",
+    "modelName": "str",
+    "stepIdx": "int",
+    "toolCall": "dict",
+    "transcriptPath": "str",
+    "workspacePaths": "list"
+  },
+  "toolCall": {
+    "name": "run_command",
+    "args_keys": [
+      "CommandLine",
+      "Cwd",
+      "WaitMsBeforeAsync",
+      "toolAction",
+      "toolSummary"
+    ],
+    "args_types": {
+      "CommandLine": "str",
+      "Cwd": "str",
+      "WaitMsBeforeAsync": "int",
+      "toolAction": "str",
+      "toolSummary": "str"
+    }
+  },
+  "stepIdx": 1408,
+  "stepIdx_type": "int",
+  "error": null,
+  "conversationId_present": true,
+  "workspacePaths": [
+    "d:/Antigravity Projects/projeto-teste"
+  ],
+  "transcriptPath_present": true,
+  "artifactDirectoryPath_present": true,
+  "modelName": "gemini-3.1-pro-low"
+}
