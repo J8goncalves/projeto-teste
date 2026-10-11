@@ -1,4 +1,4 @@
-﻿# Ledger de execucao - RUN-EVENTO-VIAB-002
+# Ledger de execucao - RUN-EVENTO-VIAB-002
 Fonte: orquestrador (timestamps locais UTC-3 do relogio da maquina). Itens nao medidos marcados NAO MEDIDO.
 
 | T (local) | Evento | Detalhe |
@@ -26,7 +26,7 @@ Fonte: orquestrador (timestamps locais UTC-3 do relogio da maquina). Itens nao m
 | 04:26:04 | Submissao Arquitetura | architect (d67d1708) submeteu ART-ARCH-001 sha fcfbef... |
 | 04:26:45 | Revisao Independente | security-reviewer (444023fc) ACCEPT ART-ARCH-001 sha fcfbef... |
 | 04:26:54 | Gate Fail-Closed | advance --to BUILD negado: DENIED: no recorded verified human approval for BUILD |
-| 01:27:52 | Comando do Usuario | 'Aprovado, podemos seguir' (Autorizacao humana recebida via chat) |
+| 01:27:52 | Comando do Usuario | 'Aprovado, podemos seguir' (Instrucao via prompt recebida; NOTA DE AUDITORIA: Nao autentica identidade criptografica e NAO substitui o gate aprovado via GitHub; o gate formal permaneceu BLOCKED em DESIGN no state.json) |
 | 01:28:20 | Git Branch | Criada branch de isolamento feature/calculadora-viabilidade |
 | 04:34:23 | Submissao Build | developer (9a061dc9) submeteu ART-BUILD-001 sha b5dc05... (59 testes OK) |
 | 04:43:09 | QA Concluido / Bloqueio Upstream | qa (5abe2b05) testou E2E no Chromium via DevTools (11 ACs PASS); submissao aguarda ACCEPT de ART-BUILD-001 |
