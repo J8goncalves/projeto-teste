@@ -316,10 +316,9 @@ def promote_core(root: Path, run_id: str, candidate_id: str, commit_sha: str) ->
     curr_branch = get_current_git_branch(root)
     if curr_branch in ('main', 'master'):
         status_label = 'CONSOLIDADA'
-        tier_label = 'semantic'
     else:
         status_label = 'VALIDADA_EM_BRANCH'
-        tier_label = 'provisória'
+    tier_label = 'semantic'
         
     cand_digest = candidate_digest(cand)
     cand_text_hash = hashlib.sha256(cand['text'].encode('utf-8')).hexdigest()
@@ -364,6 +363,8 @@ def promote_core(root: Path, run_id: str, candidate_id: str, commit_sha: str) ->
         for tag in cand.get('tags', []):
             cmd.extend(['--tag', tag])
         cmd.extend(['--tag', f'commit-{full_commit_sha[:8]}', '--tag', status_label.lower()])
+        if status_label != 'CONSOLIDADA':
+            cmd.extend(['--tag', 'provisoria'])
         
         with _AuthorizedMemoryWriteContext():
             out = ai_memory_cli(cmd)
@@ -429,7 +430,7 @@ def sync_pending_core(root: Path, run_id: str) -> list[dict]:
         page_rel_path = f"memories/core/{data['type']}/{data['id']}.md"
         kind_arg = 'decision' if data['type'] == 'decision' else 'fact'
         status_label = data.get('memory_status', 'VALIDADA_EM_BRANCH')
-        tier_label = 'semantic' if status_label == 'CONSOLIDADA' else 'provisória'
+        tier_label = 'semantic'
         title = f"Core Memory {data['id']}: {data['type']} [{status_label}]"
         body = (
             f"# {title}\n\n"
@@ -462,6 +463,8 @@ def sync_pending_core(root: Path, run_id: str) -> list[dict]:
         if data.get('commit_sha'):
             cmd.extend(['--tag', f"commit-{data['commit_sha'][:8]}"])
         cmd.extend(['--tag', status_label.lower()])
+        if status_label != 'CONSOLIDADA':
+            cmd.extend(['--tag', 'provisoria'])
         with _AuthorizedMemoryWriteContext():
             out = ai_memory_cli(cmd)
         if 'wrote' in out.lower():

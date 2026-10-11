@@ -2,11 +2,17 @@
 from __future__ import annotations
 import argparse
 import json
+import sys
 from pathlib import Path
 from . import control, memory, telemetry
 from .contracts import load, validate
 
 def main(argv=None):
+    if hasattr(sys.stdout, 'reconfigure'):
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+        except Exception:
+            pass
     p = argparse.ArgumentParser(description='V5.2 governed agent workflow; deny-by-default')
     p.add_argument('--root', default='.', help='project root (contains runs/)')
     sub = p.add_subparsers(dest='action', required=True)
