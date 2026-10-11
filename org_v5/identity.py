@@ -71,7 +71,7 @@ def clear_actor_context():
     """Clears actor context and runner tokens from environment and resets authority."""
     global _TRUSTED_RUNNER_AUTHORITY
     _TRUSTED_RUNNER_AUTHORITY = None
-    for var in ('AGY_AGENT_INSTANCE_ID', 'AGY_ASSIGNED_ROLE', 'AGY_RUNNER_SECRET', 'AGY_RUNNER_TOKEN', 'AI_MEMORY_AUTH_TOKEN'):
+    for var in ('AGY_AGENT_INSTANCE_ID', 'AGY_ASSIGNED_ROLE', 'SUBAGENT_INSTANCE_ID', 'SUBAGENT_ROLE', 'AGY_RUNNER_SECRET', 'AGY_RUNNER_TOKEN', 'AI_MEMORY_AUTH_TOKEN'):
         os.environ.pop(var, None)
     from .approvals import set_trusted_github_token
     set_trusted_github_token(None)
@@ -85,21 +85,22 @@ def verify_actor_identity(expected_role: str) -> dict:
     and treated strictly as UNVERIFIED.
     Only identities verified against an isolated RunnerAuthority receive VERIFIED assurance.
     """
-    agent_id = os.environ.get('AGY_AGENT_INSTANCE_ID')
-    assigned_role = os.environ.get('AGY_ASSIGNED_ROLE')
+    agent_id = os.environ.get('AGY_AGENT_INSTANCE_ID') or os.environ.get('SUBAGENT_INSTANCE_ID')
+    assigned_role = os.environ.get('AGY_ASSIGNED_ROLE') or os.environ.get('SUBAGENT_ROLE')
     runner_token = os.environ.get('AGY_RUNNER_TOKEN')
     
     # Check for tainted environment: an agent environment containing the runner secret is compromised
     if 'AGY_RUNNER_SECRET' in os.environ:
         return {
             'assurance': 'UNVERIFIED', 
+            'status': 'COMPROMISED_TAINTED_SECRET',
             'reason': 'compromised: AGY_RUNNER_SECRET exposed in agent process environment; independent attestation impossible',
             'agent_id': agent_id or 'unknown',
             'role': assigned_role or 'unknown'
         }
     
     if not agent_id or not assigned_role:
-        return {'assurance': 'UNVERIFIED', 'reason': 'no execution context provided by runner'}
+        return {'assurance': 'UNVERIFIED', 'status': 'UNVERIFIED_NO_CONTEXT', 'reason': 'no execution context provided by runner'}
     
     if assigned_role != expected_role:
         raise ValueError(f"Actor identity mismatch: expected {expected_role}, got {assigned_role}")
@@ -107,12 +108,18 @@ def verify_actor_identity(expected_role: str) -> dict:
     # Check cryptographic attestation via isolated authority
     if _TRUSTED_RUNNER_AUTHORITY and runner_token:
         if _TRUSTED_RUNNER_AUTHORITY.verify(agent_id, assigned_role, runner_token):
-            return {'assurance': 'VERIFIED', 'agent_id': agent_id, 'role': assigned_role}
+            return {'assurance': 'VERIFIED', 'status': 'VERIFIED_CRYPTOGRAPHIC', 'agent_id': agent_id, 'role': assigned_role}
         else:
-            return {'assurance': 'UNVERIFIED', 'reason': 'invalid runner signature', 'agent_id': agent_id, 'role': assigned_role}
+            return {'assurance': 'UNVERIFIED', 'status': 'UNVERIFIED_INVALID_SIGNATURE', 'reason': 'invalid runner signature', 'agent_id': agent_id, 'role': assigned_role}
             
     # Without isolated runner authority, mutable env vars are strictly UNVERIFIED execution metadata
-    return {'assurance': 'UNVERIFIED', 'reason': 'mutable environment variables without isolated runner authority', 'agent_id': agent_id, 'role': assigned_role}
+    return {
+        'assurance': 'UNVERIFIED', 
+        'status': 'UNVERIFIED/ROLE_ONLY', 
+        'reason': 'mutable environment variables without isolated runner authority', 
+        'agent_id': agent_id, 
+        'role': assigned_role
+    }
 
 def verify_independence(producer_identity: dict, reviewer_identity: dict) -> bool:
     """
@@ -132,4 +139,15 @@ def verify_independence(producer_identity: dict, reviewer_identity: dict) -> boo
     if prod_assurance != 'VERIFIED' or rev_assurance != 'VERIFIED':
         return False
         
+    return True
+
+def verify_sandbox_independence(producer_identity: dict, reviewer_identity: dict) -> bool:
+    """
+    Checks that producer and reviewer in a sandbox execution are distinct instances.
+    Requires distinct agent IDs. Never promotes unverified to verified.
+    """
+    prod_id = producer_identity.get('agent_id')
+    rev_id = reviewer_identity.get('agent_id')
+    if not prod_id or not rev_id or prod_id == rev_id:
+        return False
     return True
