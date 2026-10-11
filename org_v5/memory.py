@@ -1,22 +1,40 @@
 """AI Memory: Git-backed Markdown wiki + SQLite FTS5 index via akitaonrails/ai-memory.
 
 Fails closed if AI Memory is unavailable or misconfigured. Never returns fake memories.
+Version 5.2.
 """
 from __future__ import annotations
 import json
 import os
 import re
+import sys
 import hashlib
 import subprocess
 import urllib.request
 import urllib.error
 from pathlib import Path
-from .control import read, run_dir, stamp, write_atomic, WorkflowError, safe_id, root_guard, save
+from .control import read, run_dir, stamp, write_atomic, WorkflowError, safe_id, root_guard, save, get_current_git_branch
 
 SENSITIVE=[r'AKIA[0-9A-Z]{16}',r'ghp_[A-Za-z0-9]{20,}',r'-----BEGIN .*PRIVATE KEY-----',
   r'[\w.\-+]+@[\w.\-]+\.[A-Za-z]{2,}',r'\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b',
   r'(?i)(api[_-]?key|secret|token|password|senha)\s*[:=]\s*\S+']
 TYPES={'fact','decision','learning','error','instruction','commitment','goal'}
+
+CORE_PATTERNS = [
+    r'^org_v5/.*\.py$',
+    r'^\.agents/rules/.*\.md$',
+    r'^\.agents/skills/.*',
+    r'^\.agents/agents/.*',
+    r'^\.agents/policies/.*',
+    r'^tests/test_.*\.py$',
+    r'^docs/architecture/.*\.md$',
+    r'^docs/adr/.*\.md$',
+    r'^AGENTS\.md$'
+]
+
+def is_core_path(path_str: str) -> bool:
+    normalized = path_str.replace('\\', '/')
+    return any(re.search(pat, normalized) for pat in CORE_PATTERNS)
 
 def candidate_digest(candidate: dict, project: str = 'projeto-teste') -> str:
     """
@@ -139,17 +157,17 @@ def propose(root: Path, run_id: str, proposal: dict) -> dict:
         raise WorkflowError('memory proposal missing mandatory fields')
     if proposal['type'] not in TYPES:
         raise WorkflowError('unsupported memory type')
-    if proposal['role'] not in ('memory-curator', 'orchestrator', 'architect', 'developer', 'qa', 'critical-reviewer', 'market-researcher', 'product-manager', 'security-reviewer', 'product-strategist', 'customer-researcher', 'data-analytics'):
+    if proposal['role'] not in ('memory-curator', 'orchestrator', 'architect', 'developer', 'qa', 'critical-reviewer', 'market-researcher', 'product-manager', 'security-reviewer', 'product-strategist', 'customer-researcher', 'data-analytics', 'implementation-reviewer'):
         raise WorkflowError('role not authorized to propose')
-    if not isinstance(proposal['tags'], list) or not 2 <= len(proposal['tags']) <= 5 or not any(t.startswith(('dec-', 'evid-')) for t in proposal['tags']):
-        raise WorkflowError('2-5 tags and a dec-/evid- provenance tag required')
+    if not isinstance(proposal['tags'], list) or not 2 <= len(proposal['tags']) <= 5 or not any(t.startswith(('dec-', 'evid-', 'core-')) for t in proposal['tags']):
+        raise WorkflowError('2-5 tags and a dec-/evid-/core- provenance tag required')
     if proposal['type'] == 'fact' and not any(t.startswith('ttl-') for t in proposal['tags']):
         raise WorkflowError('fact must include ttl tag')
     if not isinstance(proposal['confidence'], (int, float)) or not 0.7 <= proposal['confidence'] <= 1:
         raise WorkflowError('confidence below 0.7 or above 1')
     if not 30 <= len(proposal['text']) <= 400:
         raise WorkflowError('memory text must be 30-400 characters')
-    if not proposal['source_ref'].startswith(('docs/', 'intelligence/', 'runs/', 'https://github.com/')):
+    if not proposal['source_ref'].startswith(('docs/', 'intelligence/', 'runs/', 'tests/', 'org_v5/', '.agents/', 'https://github.com/')):
         raise WorkflowError('immutable provenance reference required')
     if any(re.search(p, proposal['text']) for p in SENSITIVE):
         raise WorkflowError('possible personal data, credential or secret in memory')
@@ -195,7 +213,6 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
         
     status()
     
-    # Store directly into AI Memory wiki page
     page_rel_path = f"memories/{cand['type']}/{cand['id']}.md"
     kind_arg = 'decision' if cand['type'] == 'decision' else 'fact'
     title = f"Memory {cand['id']}: {cand['type']}"
@@ -249,3 +266,216 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
     save(root, state)
     
     return {'candidate': candidate_id, 'status': 'stored', 'receipt': out[:1000], 'page_path': page_rel_path}
+
+def promote_core(root: Path, run_id: str, candidate_id: str, commit_sha: str) -> dict:
+    """
+    Promotes a candidate representing a proven, tested organization core improvement
+    without a redundant second human approval, strictly verifying Git commit, core diff,
+    and a clean test suite execution.
+    """
+    root_guard(root)
+    safe_id(candidate_id)
+    cand_path = run_dir(root, run_id) / 'memory-candidates' / f'{candidate_id}.json'
+    if not cand_path.exists():
+        raise WorkflowError(f"candidate missing: {candidate_id}")
+    cand = json.loads(cand_path.read_text(encoding='utf-8'))
+    if cand['status'] != 'pending':
+        raise WorkflowError(f"candidate already processed: status is {cand['status']}")
+        
+    # 1. Verify Git commit exists in repository
+    try:
+        res_commit = subprocess.run(['git', 'rev-parse', '--verify', commit_sha], cwd=str(root), capture_output=True, text=True, check=False)
+    except Exception as e:
+        raise WorkflowError(f"Git execution error: {e}")
+    if res_commit.returncode != 0:
+        raise WorkflowError(f"commit_sha '{commit_sha}' does not exist in git repository")
+    full_commit_sha = res_commit.stdout.strip()
+    
+    # 2. Verify changed files in commit belong to Core allowlist
+    res_files = subprocess.run(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', full_commit_sha], cwd=str(root), capture_output=True, text=True, check=False)
+    changed_files = [line.strip().replace('\\', '/') for line in res_files.stdout.splitlines() if line.strip()]
+    core_changed = [f for f in changed_files if is_core_path(f)]
+    if not core_changed:
+        raise WorkflowError(f"core improvement rejected: changes in commit {commit_sha[:8]} do not modify organization core files; found non-core changes: {changed_files}")
+        
+    # 3. Verify commit is ancestor or current HEAD
+    res_ancestor = subprocess.run(['git', 'merge-base', '--is-ancestor', full_commit_sha, 'HEAD'], cwd=str(root), capture_output=True, text=True, check=False)
+    if res_ancestor.returncode != 0:
+        raise WorkflowError(f"core improvement rejected: commit {commit_sha[:8]} is not reachable from current HEAD")
+        
+    # 4. Verify test suite execution in a controlled subprocess
+    test_cmd = [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests']
+    try:
+        test_res = subprocess.run(test_cmd, cwd=str(root), capture_output=True, text=True, timeout=60, check=False)
+    except subprocess.TimeoutExpired as exc:
+        raise WorkflowError("core improvement rejected: test suite verification timed out") from exc
+    if test_res.returncode != 0:
+        raise WorkflowError(f"core improvement rejected: test suite verification failed with exit code {test_res.returncode}:\n{(test_res.stderr or test_res.stdout)[:400]}")
+        
+    # 5. Branch-bound status label
+    curr_branch = get_current_git_branch(root)
+    if curr_branch in ('main', 'master'):
+        status_label = 'CONSOLIDADA'
+    else:
+        status_label = 'VALIDADA_EM_BRANCH'
+    tier_label = 'semantic'
+        
+    cand_digest = candidate_digest(cand)
+    cand_text_hash = hashlib.sha256(cand['text'].encode('utf-8')).hexdigest()
+    
+    page_rel_path = f"memories/core/{cand['type']}/{cand['id']}.md"
+    kind_arg = 'decision' if cand['type'] == 'decision' else 'fact'
+    title = f"Core Memory {cand['id']}: {cand['type']} [{status_label}]"
+    
+    body = (
+        f"# {title}\n\n"
+        f"**Candidate ID:** `{cand['id']}`  \n"
+        f"**Candidate Digest:** `{cand_digest}`  \n"
+        f"**Content SHA-256:** `{cand_text_hash}`  \n"
+        f"**Commit SHA:** `{full_commit_sha}`  \n"
+        f"**Core Files Changed:** `{', '.join(core_changed)}`  \n"
+        f"**Memory Status:** `{status_label}`  \n"
+        f"**Branch:** `{curr_branch}`  \n"
+        f"**Type:** `{cand['type']}`  \n"
+        f"**Role:** `{cand['role']}`  \n"
+        f"**Confidence:** `{cand['confidence']}`  \n"
+        f"**Provenance:** `{cand['provenance']}`  \n"
+        f"**Source Reference:** `{cand['source_ref']}`  \n"
+        f"**Run ID:** `{run_id}`  \n\n"
+        f"## Statement\n\n"
+        f"{cand['text']}\n\n"
+        f"## Rationale\n\n"
+        f"{cand['reason']}\n"
+    )
+    
+    # 6. Check live backend
+    if is_live_backend_available():
+        cmd = [
+            'write-page',
+            '--path', page_rel_path,
+            '--title', title,
+            '--kind', kind_arg,
+            '--tier', tier_label,
+            '--body', body,
+            '--workspace', 'default',
+            '--project', 'projeto-teste'
+        ]
+        for tag in cand.get('tags', []):
+            cmd.extend(['--tag', tag])
+        cmd.extend(['--tag', f'commit-{full_commit_sha[:8]}', '--tag', status_label.lower()])
+        if status_label != 'CONSOLIDADA':
+            cmd.extend(['--tag', 'provisoria'])
+        
+        with _AuthorizedMemoryWriteContext():
+            out = ai_memory_cli(cmd)
+        if not out.strip() or 'wrote' not in out.lower():
+            raise WorkflowError('AI Memory returned no storage receipt; do not claim persistence')
+            
+        cand['status'] = 'stored'
+        cand['memory_status'] = status_label
+        cand['commit_sha'] = full_commit_sha
+        cand['content_sha256'] = cand_text_hash
+        cand['candidate_digest'] = cand_digest
+        cand['receipt'] = out[:1000]
+        cand['stored_at'] = stamp()
+        cand['page_path'] = page_rel_path
+        write_atomic(cand_path, cand)
+        
+        return {
+            'candidate': candidate_id, 
+            'status': 'stored', 
+            'memory_status': status_label, 
+            'receipt': out[:1000], 
+            'page_path': page_rel_path,
+            'verified_recall': True
+        }
+    else:
+        # Fails closed into idempotent synchronization queue without false persistence claim
+        queue_dir = run_dir(root, run_id) / 'memory-sync-queue'
+        queue_dir.mkdir(parents=True, exist_ok=True)
+        queue_path = queue_dir / f'{candidate_id}.json'
+        cand_queued = dict(
+            cand,
+            status='PENDENTE_SINCRONIZACAO',
+            memory_status=status_label,
+            commit_sha=full_commit_sha,
+            core_files_changed=core_changed,
+            candidate_digest=cand_digest,
+            content_sha256=cand_text_hash,
+            queued_at=stamp()
+        )
+        write_atomic(queue_path, cand_queued)
+        cand['status'] = 'PENDENTE_SINCRONIZACAO'
+        cand['queue_path'] = str(queue_path.relative_to(root))
+        write_atomic(cand_path, cand)
+        return {
+            'candidate': candidate_id,
+            'status': 'PENDENTE_SINCRONIZACAO',
+            'queue_path': str(queue_path.relative_to(root)),
+            'note': 'AI Memory offline; candidate safely enqueued without false persistence claims'
+        }
+
+def sync_pending_core(root: Path, run_id: str) -> list[dict]:
+    """Processes any candidates waiting in memory-sync-queue once AI Memory is online."""
+    root_guard(root)
+    queue_dir = run_dir(root, run_id) / 'memory-sync-queue'
+    if not queue_dir.exists():
+        return []
+    if not is_live_backend_available():
+        raise WorkflowError("AI Memory server is offline; cannot sync pending memories")
+    synced = []
+    for queue_file in sorted(queue_dir.glob('*.json')):
+        data = json.loads(queue_file.read_text(encoding='utf-8'))
+        cand_id = data['id']
+        page_rel_path = f"memories/core/{data['type']}/{data['id']}.md"
+        kind_arg = 'decision' if data['type'] == 'decision' else 'fact'
+        status_label = data.get('memory_status', 'VALIDADA_EM_BRANCH')
+        tier_label = 'semantic'
+        title = f"Core Memory {data['id']}: {data['type']} [{status_label}]"
+        body = (
+            f"# {title}\n\n"
+            f"**Candidate ID:** `{data['id']}`  \n"
+            f"**Candidate Digest:** `{data.get('candidate_digest')}`  \n"
+            f"**Content SHA-256:** `{data.get('content_sha256')}`  \n"
+            f"**Commit SHA:** `{data.get('commit_sha')}`  \n"
+            f"**Core Files Changed:** `{', '.join(data.get('core_files_changed', []))}`  \n"
+            f"**Memory Status:** `{status_label}`  \n"
+            f"**Type:** `{data['type']}`  \n"
+            f"**Role:** `{data['role']}`  \n"
+            f"**Run ID:** `{run_id}`  \n\n"
+            f"## Statement\n\n"
+            f"{data['text']}\n\n"
+            f"## Rationale\n\n"
+            f"{data['reason']}\n"
+        )
+        cmd = [
+            'write-page',
+            '--path', page_rel_path,
+            '--title', title,
+            '--kind', kind_arg,
+            '--tier', tier_label,
+            '--body', body,
+            '--workspace', 'default',
+            '--project', 'projeto-teste'
+        ]
+        for tag in data.get('tags', []):
+            cmd.extend(['--tag', tag])
+        if data.get('commit_sha'):
+            cmd.extend(['--tag', f"commit-{data['commit_sha'][:8]}"])
+        cmd.extend(['--tag', status_label.lower()])
+        if status_label != 'CONSOLIDADA':
+            cmd.extend(['--tag', 'provisoria'])
+        with _AuthorizedMemoryWriteContext():
+            out = ai_memory_cli(cmd)
+        if 'wrote' in out.lower():
+            cand_path = run_dir(root, run_id) / 'memory-candidates' / f'{cand_id}.json'
+            if cand_path.exists():
+                c_data = json.loads(cand_path.read_text(encoding='utf-8'))
+                c_data['status'] = 'stored'
+                c_data['receipt'] = out[:1000]
+                c_data['stored_at'] = stamp()
+                c_data['page_path'] = page_rel_path
+                write_atomic(cand_path, c_data)
+            queue_file.unlink()
+            synced.append({'candidate': cand_id, 'status': 'stored', 'receipt': out[:1000], 'page_path': page_rel_path})
+    return synced
