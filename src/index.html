@@ -161,6 +161,36 @@
             display: block;
         }
 
+        /* Recovery Banner for Fail-Closed Quarantine */
+        .recovery-banner {
+            background-color: #fef2f2;
+            border: 2px solid #ef4444;
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-md);
+        }
+        .recovery-banner h3 {
+            color: #991b1b;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .recovery-banner p {
+            color: #7f1d1d;
+            font-size: 0.925rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+        .recovery-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
         /* Main Form Card */
         .card {
             background-color: var(--bg-surface);
@@ -564,6 +594,16 @@
         <!-- Live region for accessibility -->
         <div id="liveFeedback" class="live-feedback" aria-live="polite" role="status"></div>
         <div id="screenReaderAnnouncer" class="visually-hidden" aria-live="assertive"></div>
+
+        <!-- Recovery Banner (fail-closed quarantine protection) -->
+        <div id="recoveryBanner" class="recovery-banner" role="alert" style="display: none;">
+            <h3>⚠️ Falha Crítica de Armazenamento Local</h3>
+            <p>Dados corrompidos foram detectados no seu navegador e a gravação da cópia de segurança falhou (cota cheia ou armazenamento bloqueado). Para evitar a perda dos dados brutos originais, as operações de alteração estão bloqueadas.</p>
+            <div class="recovery-actions">
+                <button type="button" id="btnExportRaw" class="btn btn-secondary btn-sm">Baixar Dados Brutos</button>
+                <button type="button" id="btnDiscardAndReset" class="btn btn-danger btn-sm">Descartar e Reinicializar</button>
+            </div>
+        </div>
 
         <header class="app-header">
             <div class="app-title">

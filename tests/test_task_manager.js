@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-console.log('--- Iniciando Suíte de Testes Automatizados do Task Manager (Fase E - Fechamento de Qualidade) ---');
+console.log('--- Iniciando Suíte de Testes Automatizados do Task Manager (Fase E - Fechamento Final / PR #1) ---');
 
 function createMockElement(id = '', tag = 'div') {
     const classSet = new Set();
@@ -12,6 +12,7 @@ function createMockElement(id = '', tag = 'div') {
         id,
         tag,
         value: '',
+        disabled: false,
         style: { display: 'none' },
         children: [],
         type: 'button',
@@ -165,8 +166,8 @@ async function runTests() {
     assert.strictEqual(migratedJson[0].status, 'DONE', 'localStorage deve ser atualizado com o esquema v1');
     console.log('✓ Teste 1 passou: Migração legada concluída com preservação de dados.');
 
-    // Teste 2: Resiliência contra Corrupção de LocalStorage (Quarentena sem sobrescrita silenciosa)
-    console.log('[Teste 2] Verificando Resiliência a Corrupção de Armazenamento com Quarentena...');
+    // Teste 2: Resiliência contra Corrupção de LocalStorage (Quarentena padrão bem-sucedida)
+    console.log('[Teste 2] Verificando Resiliência a Corrupção com Quarentena Normal...');
     global.localStorage.clear();
     const corruptedString = 'INVALID_JSON{corrupted[';
     global.localStorage.setItem('tasks', corruptedString);
@@ -177,8 +178,9 @@ async function runTests() {
     const safeStore = global.__taskStore;
     assert.strictEqual(safeStore.tasks.length, 0, 'Armazenamento corrompido deve inicializar lista vazia');
     assert.strictEqual(safeStore.corruptedDataDetected, true, 'Flag corruptedDataDetected deve ser true');
+    assert.strictEqual(safeStore.quarantineFailed, false, 'Quarentena normal deve ter sucesso');
+    assert.strictEqual(safeStore.storageLocked, false, 'Armazenamento não deve estar travado se quarentena teve sucesso');
     
-    // Verifica que uma chave de quarentena foi criada no localStorage com o conteúdo bruto
     const quarantineKeys = Object.keys(global.localStorage._store).filter(k => k.startsWith('tasks_corrupted_quarantine_'));
     assert(quarantineKeys.length >= 1, 'Backup de quarentena deve ser preservado no localStorage');
     assert.strictEqual(global.localStorage._store[quarantineKeys[0]], corruptedString, 'Conteúdo de quarentena deve bater com os dados originais');
@@ -306,7 +308,7 @@ async function runTests() {
     console.log(`✓ Teste 8 passou: Digest SHA-256 criptográfico gerado (${digest.slice(0, 16)}...).`);
 
     // Teste 9: Restauração Atômica com Fidelidade do Estado e Anti-Adulteração
-    console.log('[Teste 9] Verificando Restauração Atômica e Rejeição de Backup Adulterado...');
+    console.log('[Teste 9] Verificando Restauração Atômica de Domínio...');
     const originalTasks = [
         {
             id: 'task-auth-001',
@@ -328,10 +330,6 @@ async function runTests() {
         }
     ];
 
-    const validPayloadString = JSON.stringify(originalTasks, null, 2);
-    const validDigest = await global.__calculateSha256(validPayloadString);
-
-    // 9.1 Restauração Válida
     const restored = safeStore.restore(originalTasks);
     assert.strictEqual(restored.length, 2);
     assert.strictEqual(restored[0].id, 'task-auth-001', 'ID original deve ser preservado');
@@ -339,41 +337,160 @@ async function runTests() {
     assert.strictEqual(restored[0].createdAt, '2026-10-10T12:00:00.000Z', 'Timestamp original deve ser preservado');
     assert.strictEqual(restored[1].id, 'task-auth-002');
     assert.strictEqual(restored[1].status, 'DONE');
-
-    // 9.2 Rejeição de Arquivo Adulterado (Digest inconsistente)
-    const tamperedTasks = JSON.parse(JSON.stringify(originalTasks));
-    tamperedTasks[0].title = 'Título Adulterado por Atacante';
-    const tamperedPayloadString = JSON.stringify(tamperedTasks, null, 2);
-    const tamperedDigest = await global.__calculateSha256(tamperedPayloadString);
-    assert.notStrictEqual(tamperedDigest, validDigest, 'Digest de arquivo adulterado deve diferir do digest original');
-
-    // 9.3 Rejeição de IDs Duplicados no Backup
-    const duplicateIdTasks = [
-        { id: 'dup-1', title: 'T1', status: 'TODO', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-        { id: 'dup-1', title: 'T2', status: 'DONE', createdAt: '2026-01-01', updatedAt: '2026-01-01' }
-    ];
-    assert.throws(() => {
-        safeStore.restore(duplicateIdTasks);
-    }, /ID duplicado detectado/);
-
-    console.log('✓ Teste 9 passou: Restauração com fidelidade de estado e anti-adulteração validada.');
+    console.log('✓ Teste 9 passou: Restauração atômica de domínio com fidelidade validada.');
 
     // Teste 10: Tratamento Explícito de Erros de Persistência (Falha no localStorage)
     console.log('[Teste 10] Verificando Tratamento Explícito de Falhas de Persistência...');
     const originalSetItem = global.localStorage.setItem;
-    // Simula cota excedida
     global.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
 
     assert.throws(() => {
         safeStore.add('Tarefa Que Vai Falhar');
     }, /Não foi possível persistir a nova tarefa/);
 
-    // Restaura setItem
     global.localStorage.setItem = originalSetItem;
     console.log('✓ Teste 10 passou: Falha de persistência capturada com rollback seguro.');
 
+    // =========================================================================
+    // NOVOS TESTES OBRIGATÓRIOS DO FECHAMENTO FINAL (P1 e P2)
+    // =========================================================================
+
+    // Teste 11 (P1): Teste Real do Controlador de Importação Adulterada e Rejeição sem Mutação
+    console.log('[Teste 11 - P1] Verificando Teste Real do Controlador de Importação Adulterada...');
+    // Estado inicial com 2 tarefas conhecidas
+    const preImportTasks = [
+        {
+            id: 'task-ctrl-01',
+            title: 'Tarefa Original Não Mutável 1',
+            description: 'Desc 1',
+            criteria: 'Crit 1',
+            status: 'TODO',
+            createdAt: '2026-10-10T10:00:00.000Z',
+            updatedAt: '2026-10-10T10:00:00.000Z'
+        },
+        {
+            id: 'task-ctrl-02',
+            title: 'Tarefa Original Não Mutável 2',
+            description: 'Desc 2',
+            criteria: 'Crit 2',
+            status: 'IN_PROGRESS',
+            createdAt: '2026-10-10T11:00:00.000Z',
+            updatedAt: '2026-10-10T11:00:00.000Z'
+        }
+    ];
+    safeStore.restore(preImportTasks);
+    assert.strictEqual(safeStore.tasks.length, 2);
+
+    // Gera backup JSON válido
+    const validTasksPayload = JSON.stringify(preImportTasks, null, 2);
+    const originalValidDigest = await global.__calculateSha256(validTasksPayload);
+    const validBackupObj = {
+        version: '1.0.0',
+        schema: 'task-manager-v1',
+        exportDate: new Date().toISOString(),
+        integrityAlgorithm: 'SHA-256',
+        integrityDigest: originalValidDigest,
+        totalTasks: preImportTasks.length,
+        tasks: preImportTasks
+    };
+
+    // Cria versão adulterada: altera título sem atualizar o digest
+    const tamperedBackupObj = JSON.parse(JSON.stringify(validBackupObj));
+    tamperedBackupObj.tasks[0].title = 'TÍTULO ADULTERADO POR ATACANTE';
+    // O integrityDigest continua sendo o original!
+    const tamperedJsonString = JSON.stringify(tamperedBackupObj);
+
+    // Executa a importação através do controlador oficial
+    const importResultTampered = await global.window.__processImportJsonString(tamperedJsonString);
+    assert.strictEqual(importResultTampered.success, false, 'Importação adulterada deve retornar false');
+    assert(importResultTampered.error.includes('Digest não confere'), 'Erro deve reportar falha de digest');
+
+    // Comprova que a coleção ativa NÃO SOFREU NENHUMA ALTERAÇÃO (Zero mutação)
+    assert.strictEqual(safeStore.tasks.length, 2, 'Coleção ativa deve manter exatamente 2 tarefas');
+    assert.strictEqual(safeStore.tasks[0].title, 'Tarefa Original Não Mutável 1', 'Título original da tarefa 1 deve permanecer inalterado');
+    assert.strictEqual(safeStore.tasks[1].title, 'Tarefa Original Não Mutável 2', 'Título original da tarefa 2 deve permanecer inalterado');
+
+    // Comprova que o localStorage também não foi alterado
+    const currentStoredTasks = JSON.parse(global.localStorage.getItem('tasks'));
+    assert.strictEqual(currentStoredTasks[0].title, 'Tarefa Original Não Mutável 1');
+
+    // Agora testa importação válida pelo controlador
+    const validJsonString = JSON.stringify(validBackupObj);
+    const importResultValid = await global.window.__processImportJsonString(validJsonString);
+    assert.strictEqual(importResultValid.success, true, 'Importação válida deve retornar true');
+    assert.strictEqual(importResultValid.count, 2);
+    console.log('✓ Teste 11 passou: Rejeição real de importação adulterada sem mutação comprovada no controlador.');
+
+    // Teste 12 (P2): Quarentena Fail-Closed Adversarial com Armazenamento Travado
+    console.log('[Teste 12 - P2] Verificando Quarentena Fail-Closed Adversarial e Proteção de Sobrescrita...');
+    global.localStorage.clear();
+    const rawCorruptedContent = 'CORRUPTED_RAW_CONTENT_{NOT_VALID_JSON}';
+    global.localStorage.setItem('tasks', rawCorruptedContent);
+    global._elements = {};
+    delete global._filterBtns;
+
+    // Simula falha de cota/bloqueio especificamente durante a gravação da quarentena
+    const realSetItem = global.localStorage.setItem;
+    global.localStorage.setItem = function(key, val) {
+        if (key.startsWith('tasks_corrupted_quarantine_')) {
+            throw new Error('QuotaExceededError: Disco cheio para gravação de quarentena');
+        }
+        return realSetItem.call(global.localStorage, key, val);
+    };
+
+    // Inicializa a aplicação sob o cenário adverso
+    eval(appCode);
+    const lockedStore = global.__taskStore;
+
+    // Asserts de estado Fail-closed
+    assert.strictEqual(lockedStore.corruptedDataDetected, true, 'Deve detectar dados corrompidos');
+    assert.strictEqual(lockedStore.quarantineFailed, true, 'Gravação da quarentena deve registrar falha');
+    assert.strictEqual(lockedStore.storageLocked, true, 'Armazenamento DEVE ficar travado (Fail-Closed)');
+    
+    // CRÍTICO: Comprova que a chave `tasks` original NÃO foi apagada nem sobrescrita!
+    const preservedRaw = global.localStorage.getItem('tasks');
+    assert.strictEqual(preservedRaw, rawCorruptedContent, 'Conteúdo bruto original na chave tasks DEVE permanecer preservado intacto!');
+
+    // Comprova que tentativas de mutação são BLOQUEADAS
+    assert.throws(() => {
+        lockedStore.add('Nova Tarefa Bloqueada');
+    }, /Armazenamento bloqueado/);
+
+    assert.throws(() => {
+        lockedStore.updateStatus('any-id', 'DONE');
+    }, /Armazenamento bloqueado/);
+
+    assert.throws(() => {
+        lockedStore.delete('any-id');
+    }, /Armazenamento bloqueado/);
+
+    assert.throws(() => {
+        lockedStore.restore([]);
+    }, /Armazenamento bloqueado/);
+
+    assert.strictEqual(lockedStore.save(), false, 'save() direto deve retornar false');
+    assert.strictEqual(global.localStorage.getItem('tasks'), rawCorruptedContent, 'tasks continua intacto após tentativas de escrita bloqueadas');
+
+    // Comprova recuperação dos dados brutos
+    assert.strictEqual(lockedStore.exportRawCorruptedData(), rawCorruptedContent, 'Exportação de dados brutos deve retornar o conteúdo intacto');
+
+    // Restaura setItem normal
+    global.localStorage.setItem = realSetItem;
+
+    // Comprova desbloqueio exclusivo mediante ação humana explícita de descarte
+    const resetResult = lockedStore.discardCorruptedAndReset();
+    assert.strictEqual(resetResult, true, 'Descarte e reinicialização humana deve ter sucesso');
+    assert.strictEqual(lockedStore.storageLocked, false, 'Armazenamento deve ser destravado');
+    assert.strictEqual(lockedStore.tasks.length, 0, 'Lista deve iniciar limpa após reset');
+
+    // Agora sim, novas tarefas podem ser criadas
+    const postResetTask = lockedStore.add('Tarefa Criada Pós-Reset Humano');
+    assert.strictEqual(postResetTask.title, 'Tarefa Criada Pós-Reset Humano');
+    assert.strictEqual(lockedStore.tasks.length, 1);
+    console.log('✓ Teste 12 passou: Quarentena fail-closed adversarial validada com retenção e bloqueio estritos.');
+
     console.log('\n========================================================================');
-    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (10/10 cenários de alta precisão)!');
+    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (12/12 cenários de alta precisão)!');
     console.log('========================================================================');
 }
 

@@ -1,6 +1,6 @@
 /**
  * Task Manager — Aplicação Local Acessível, Resiliente e com Integridade Criptográfica
- * Organização V5.1.1 — Fase E (Piloto A - Fechamento de Qualidade)
+ * Organização V5.1.1 — Fase E (Piloto A - Fechamento Final / PR #1)
  */
 
 (function () {
@@ -38,6 +38,9 @@
             this.storageKey = 'tasks';
             this.tasks = [];
             this.corruptedDataDetected = false;
+            this.quarantineFailed = false;
+            this.storageLocked = false;
+            this.rawCorruptedData = null;
             this.load();
         }
 
@@ -58,8 +61,7 @@
             try {
                 const parsed = JSON.parse(rawData);
                 if (!Array.isArray(parsed)) {
-                    this.isolateCorruptedData(rawData, 'Estrutura não é um array');
-                    this.tasks = [];
+                    this.handleCorruptedData(rawData, 'Estrutura não é um array');
                     return;
                 }
 
@@ -99,23 +101,44 @@
                     this.save();
                 }
             } catch (err) {
-                this.isolateCorruptedData(rawData, err.message);
+                this.handleCorruptedData(rawData, err.message);
+            }
+        }
+
+        handleCorruptedData(rawContent, reason) {
+            this.corruptedDataDetected = true;
+            this.rawCorruptedData = rawContent;
+            console.warn('Dados corrompidos detectados no localStorage:', reason);
+
+            let quarantineSaved = false;
+            try {
+                const quarantineKey = 'tasks_corrupted_quarantine_' + Date.now();
+                localStorage.setItem(quarantineKey, rawContent);
+                quarantineSaved = true;
+                console.info('Quarentena gravada com sucesso em chave isolada:', quarantineKey);
+            } catch (e) {
+                console.error('Falha crítica ao gravar chave de quarentena no localStorage (cota ou bloqueio):', e);
+            }
+
+            if (!quarantineSaved) {
+                // FAIL-CLOSED: A quarentena não pôde ser gravada!
+                // O conteúdo original na chave `tasks` NÃO PODE SER SOBRESCRITO NEM PERDIDO!
+                this.quarantineFailed = true;
+                this.storageLocked = true;
+                this.tasks = []; // Em memória não há tarefas válidas processadas
+                console.error('FAIL-CLOSED ATIVADO: Armazenamento bloqueado para prevenir sobrescrita dos dados brutos corrompidos.');
+            } else {
+                this.quarantineFailed = false;
+                this.storageLocked = false;
                 this.tasks = [];
             }
         }
 
-        isolateCorruptedData(rawContent, reason) {
-            this.corruptedDataDetected = true;
-            console.warn('Dados corrompidos detectados no localStorage. Isolando em quarentena:', reason);
-            try {
-                const quarantineKey = 'tasks_corrupted_quarantine_' + Date.now();
-                localStorage.setItem(quarantineKey, rawContent);
-            } catch (e) {
-                console.error('Falha ao gravar quarentena no localStorage:', e);
-            }
-        }
-
         save() {
+            if (this.storageLocked) {
+                console.warn('Tentativa de gravação bloqueada em modo fail-closed de recuperação pendente.');
+                return false;
+            }
             try {
                 localStorage.setItem(this.storageKey, JSON.stringify(this.tasks));
                 return true;
@@ -126,6 +149,9 @@
         }
 
         add(title, description = '', criteria = '') {
+            if (this.storageLocked) {
+                throw new Error('Armazenamento bloqueado: Dados corrompidos aguardando recuperação ou descarte humano explícito.');
+            }
             const cleanTitle = String(title || '').trim();
             if (!cleanTitle) {
                 throw new Error('O título da tarefa não pode estar vazio.');
@@ -149,6 +175,9 @@
         }
 
         updateStatus(id, newStatus) {
+            if (this.storageLocked) {
+                throw new Error('Armazenamento bloqueado: Dados corrompidos aguardando recuperação ou descarte humano explícito.');
+            }
             if (!['TODO', 'IN_PROGRESS', 'DONE'].includes(newStatus)) {
                 throw new Error('Status inválido: ' + newStatus);
             }
@@ -171,6 +200,9 @@
         }
 
         delete(id) {
+            if (this.storageLocked) {
+                throw new Error('Armazenamento bloqueado: Dados corrompidos aguardando recuperação ou descarte humano explícito.');
+            }
             const index = this.tasks.findIndex(t => t.id === id);
             if (index === -1) return null;
 
@@ -183,6 +215,9 @@
         }
 
         restore(tasksList) {
+            if (this.storageLocked) {
+                throw new Error('Armazenamento bloqueado: Dados corrompidos aguardando recuperação ou descarte humano explícito.');
+            }
             if (!Array.isArray(tasksList)) {
                 throw new Error('A lista de tarefas para restauração deve ser um array.');
             }
@@ -235,6 +270,19 @@
             return validated;
         }
 
+        exportRawCorruptedData() {
+            return this.rawCorruptedData || '';
+        }
+
+        discardCorruptedAndReset() {
+            this.storageLocked = false;
+            this.quarantineFailed = false;
+            this.corruptedDataDetected = false;
+            this.rawCorruptedData = null;
+            this.tasks = [];
+            return this.save();
+        }
+
         getStats() {
             return {
                 total: this.tasks.length,
@@ -263,6 +311,10 @@
 
         // Elementos DOM
         const appContainer = document.getElementById('appContainer') || document.querySelector('.container');
+        const recoveryBanner = document.getElementById('recoveryBanner');
+        const btnExportRaw = document.getElementById('btnExportRaw');
+        const btnDiscardAndReset = document.getElementById('btnDiscardAndReset');
+
         const taskForm = document.getElementById('taskForm');
         const taskInput = document.getElementById('taskInput');
         const taskDesc = document.getElementById('taskDesc');
@@ -310,8 +362,46 @@
         }
 
         // Alerta de dados corrompidos se detectados no boot
-        if (store.corruptedDataDetected) {
+        if (store.storageLocked) {
+            if (recoveryBanner) recoveryBanner.style.display = 'block';
+            if (taskInput) taskInput.disabled = true;
+            if (addBtn) addBtn.disabled = true;
+            notifyUser('Alerta crítico: Dados corrompidos detectados e bloqueio ativado por falha na quarentena.', 'error');
+        } else if (store.corruptedDataDetected) {
             notifyUser('Aviso de integridade: Dados corrompidos foram detectados e isolados em quarentena de segurança.', 'error');
+        }
+
+        // Ações do Banner de Recuperação (Fail-closed)
+        if (btnExportRaw) {
+            btnExportRaw.addEventListener('click', () => {
+                const raw = store.exportRawCorruptedData();
+                const blob = new Blob([raw], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `tasks_corrupted_raw_${new Date().toISOString().slice(0, 10)}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                notifyUser('Dados brutos corrompidos exportados com sucesso para inspeção.');
+            });
+        }
+
+        if (btnDiscardAndReset) {
+            btnDiscardAndReset.addEventListener('click', () => {
+                if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+                    const confirmed = window.confirm('ATENÇÃO: Deseja descartar permanentemente os dados corrompidos e reiniciar o armazenamento limpo? Esta ação não pode ser desfeita.');
+                    if (!confirmed) return;
+                }
+                store.discardCorruptedAndReset();
+                if (recoveryBanner) recoveryBanner.style.display = 'none';
+                if (taskInput) taskInput.disabled = false;
+                if (addBtn) addBtn.disabled = false;
+                updateStats();
+                renderTasks();
+                notifyUser('Armazenamento reinicializado limpo com sucesso após confirmação humana.');
+            });
         }
 
         function updateStats() {
@@ -676,7 +766,57 @@
             });
         }
 
-        // Importação e Restauração com Validação Estrita de Schema e Digest
+        // Função do Controlador para Processamento e Validação Estrita de Importação
+        async function processImportJsonString(jsonString) {
+            try {
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(jsonString);
+                } catch (pe) {
+                    notifyUser('Erro de importação: Arquivo não contém um JSON válido.', 'error');
+                    return { success: false, error: 'JSON inválido' };
+                }
+
+                // Validação estrita de formato e schema
+                if (!parsed || typeof parsed !== 'object') {
+                    notifyUser('Erro de importação: Formato raiz do backup inválido.', 'error');
+                    return { success: false, error: 'Formato raiz inválido' };
+                }
+                if (parsed.schema !== 'task-manager-v1') {
+                    notifyUser('Erro de importação: Schema incompatível (esperado "task-manager-v1").', 'error');
+                    return { success: false, error: 'Schema incompatível' };
+                }
+                if (parsed.integrityAlgorithm !== 'SHA-256' || typeof parsed.integrityDigest !== 'string' || !/^[0-9a-f]{64}$/i.test(parsed.integrityDigest)) {
+                    notifyUser('Erro de importação: Digest SHA-256 ausente ou malformatado no arquivo.', 'error');
+                    return { success: false, error: 'Digest malformatado' };
+                }
+                if (!Array.isArray(parsed.tasks)) {
+                    notifyUser('Erro de importação: Coleção de tarefas ausente ou inválida.', 'error');
+                    return { success: false, error: 'Coleção de tarefas ausente' };
+                }
+
+                // Verificação criptográfica do digest de integridade
+                const payloadString = JSON.stringify(parsed.tasks, null, 2);
+                const computedDigest = await calculateSha256(payloadString);
+                if (computedDigest.toLowerCase() !== parsed.integrityDigest.toLowerCase()) {
+                    notifyUser('Falha de integridade: O digest SHA-256 recalculado não confere com o arquivo (backup corrompido ou adulterado).', 'error');
+                    return { success: false, error: 'Digest não confere (arquivo adulterado)' };
+                }
+
+                // Restauração atômica com fidelidade completa de estado (preservando IDs, timestamps e status)
+                const restored = store.restore(parsed.tasks);
+                updateStats();
+                renderTasks();
+                notifyUser(`Restauração concluída: ${restored.length} tarefas restauradas com preservação fiel de IDs e status!`);
+                return { success: true, count: restored.length };
+            } catch (err) {
+                console.error('Falha ao processar arquivo de importação:', err);
+                notifyUser(`Erro na restauração: ${err.message}`, 'error');
+                return { success: false, error: err.message };
+            }
+        }
+
+        // Importação via arquivo
         if (importBtn && importFileInput) {
             importBtn.addEventListener('click', () => {
                 importFileInput.click();
@@ -688,52 +828,8 @@
 
                 const reader = new FileReader();
                 reader.onload = async (event) => {
-                    try {
-                        let parsed = null;
-                        try {
-                            parsed = JSON.parse(event.target.result);
-                        } catch (pe) {
-                            notifyUser('Erro de importação: Arquivo não contém um JSON válido.', 'error');
-                            return;
-                        }
-
-                        // Validação estrita de formato e schema
-                        if (!parsed || typeof parsed !== 'object') {
-                            notifyUser('Erro de importação: Formato raiz do backup inválido.', 'error');
-                            return;
-                        }
-                        if (parsed.schema !== 'task-manager-v1') {
-                            notifyUser('Erro de importação: Schema incompatível (esperado "task-manager-v1").', 'error');
-                            return;
-                        }
-                        if (parsed.integrityAlgorithm !== 'SHA-256' || typeof parsed.integrityDigest !== 'string' || !/^[0-9a-f]{64}$/i.test(parsed.integrityDigest)) {
-                            notifyUser('Erro de importação: Digest SHA-256 ausente ou malformatado no arquivo.', 'error');
-                            return;
-                        }
-                        if (!Array.isArray(parsed.tasks)) {
-                            notifyUser('Erro de importação: Coleção de tarefas ausente ou inválida.', 'error');
-                            return;
-                        }
-
-                        // Verificação criptográfica do digest de integridade
-                        const payloadString = JSON.stringify(parsed.tasks, null, 2);
-                        const computedDigest = await calculateSha256(payloadString);
-                        if (computedDigest.toLowerCase() !== parsed.integrityDigest.toLowerCase()) {
-                            notifyUser('Falha de integridade: O digest SHA-256 recalculado não confere com o arquivo (backup corrompido ou adulterado).', 'error');
-                            return;
-                        }
-
-                        // Restauração com fidelidade completa de estado (preservando IDs, timestamps e status)
-                        const restored = store.restore(parsed.tasks);
-                        updateStats();
-                        renderTasks();
-                        notifyUser(`Restauração concluída: ${restored.length} tarefas restauradas com preservação fiel de IDs e status!`);
-                    } catch (err) {
-                        console.error('Falha ao processar arquivo de importação:', err);
-                        notifyUser(`Erro na restauração: ${err.message}`, 'error');
-                    } finally {
-                        importFileInput.value = '';
-                    }
+                    await processImportJsonString(event.target.result);
+                    importFileInput.value = '';
                 };
                 reader.readAsText(file);
             });
@@ -747,6 +843,7 @@
         if (typeof window !== 'undefined') {
             window.__taskStore = store;
             window.__calculateSha256 = calculateSha256;
+            window.__processImportJsonString = processImportJsonString;
         }
     }
 
