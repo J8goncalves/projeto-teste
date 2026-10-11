@@ -5,7 +5,7 @@ import os
 import shutil
 import json
 
-from org_v5 import control, cli
+from org_v5 import control, cli, approvals
 from org_v5.identity import set_actor_context, clear_actor_context
 from org_v5.contracts import validate, load, digest
 
@@ -177,7 +177,7 @@ class V51GovernanceTests(unittest.TestCase):
 
     @patch('org_v5.approvals.urllib.request.urlopen')
     def test_T05_github_approval_fail_closed(self, mock_urlopen):
-        os.environ['GITHUB_TOKEN'] = 'fake_token'
+        approvals.set_trusted_github_token('fake_token')
         mock_urlopen.side_effect = Exception("API Error")
         with self.assertRaises(control.WorkflowError) as ctx:
             control.approval(self.root, 'RUN-TEST', 'BUILD', 'APPROVE', 'human', 'https://github.com/J8goncalves/projeto-teste/issues/1', expected_sha='a'*64)

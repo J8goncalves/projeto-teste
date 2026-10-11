@@ -39,6 +39,14 @@ def candidate_digest(candidate: dict, project: str = 'projeto-teste') -> str:
     return hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()
 
 _PROMOTION_WRITE_AUTHORIZED = False
+_TRUSTED_MEMORY_AUTH_TOKEN: str | None = None
+
+def set_trusted_memory_token(token: str | None):
+    global _TRUSTED_MEMORY_AUTH_TOKEN
+    _TRUSTED_MEMORY_AUTH_TOKEN = token
+
+def get_trusted_memory_token() -> str | None:
+    return _TRUSTED_MEMORY_AUTH_TOKEN
 
 class _AuthorizedMemoryWriteContext:
     def __enter__(self):
@@ -64,8 +72,11 @@ def ai_memory_cli(args: list[str], timeout: int = 15) -> str:
             if c.exists():
                 binary = str(c)
                 break
+    env = os.environ.copy()
+    if _TRUSTED_MEMORY_AUTH_TOKEN:
+        env['AI_MEMORY_AUTH_TOKEN'] = _TRUSTED_MEMORY_AUTH_TOKEN
     try:
-        res = subprocess.run([binary] + args, capture_output=True, text=True, timeout=timeout, check=False, encoding='utf-8')
+        res = subprocess.run([binary] + args, capture_output=True, text=True, timeout=timeout, check=False, encoding='utf-8', env=env)
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
         raise WorkflowError('AI Memory CLI offline or timed out: ' + str(exc)) from exc
     if res.returncode != 0:
@@ -78,7 +89,7 @@ def status() -> dict:
         output = ai_memory_cli(['status'], timeout=5)
     except Exception as exc:
         raise WorkflowError('AI Memory server is offline or unreachable; writes and recall disabled') from exc
-    if any(k in output.lower() for k in ('server unreachable', 'could not reach', 'refused', 'cloud', 'not configured')):
+    if any(k in output.lower() for k in ('server unreachable', 'could not reach', 'refused', 'cloud', 'not configured', '401 unauthorized')):
         raise WorkflowError('AI Memory server is not verifiably reachable/on-prem; writes and recall disabled')
     return {
         'connected': True,
@@ -86,6 +97,14 @@ def status() -> dict:
         'server_url': url,
         'status_excerpt': output[:350].encode('ascii', 'replace').decode('ascii')
     }
+
+def is_live_backend_available() -> bool:
+    """Checks whether the on-prem AI Memory server and CLI binary are reachable."""
+    try:
+        s = status()
+        return bool(s.get('connected'))
+    except Exception:
+        return False
 
 def brief(role: str, topic: str, limit: int = 5, project: str = 'projeto-teste') -> dict:
     if not role or limit < 1 or limit > 5:
@@ -166,15 +185,13 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
     cand_digest = candidate_digest(cand)
     cand_text_hash = hashlib.sha256(cand['text'].encode('utf-8')).hexdigest()
     
-    expected_hash = decision.get('candidate_digest') or decision.get('sha256') or decision.get('content_sha256')
-    if not expected_hash:
-        raise WorkflowError('approval missing mandatory candidate hash or content SHA-256')
+    expected_digest = decision.get('candidate_digest')
+    if not expected_digest:
+        raise WorkflowError('approval missing mandatory candidate_digest binding: text hash alone is not accepted')
     if decision.get('content_sha256') and decision.get('content_sha256') != cand_text_hash:
         raise WorkflowError('candidate text modified after approval: content hash mismatch')
-    if decision.get('candidate_digest') and decision.get('candidate_digest') != cand_digest:
+    if expected_digest != cand_digest:
         raise WorkflowError('candidate full specification modified after approval: candidate digest mismatch')
-    if expected_hash not in (cand_digest, cand_text_hash):
-        raise WorkflowError('candidate modified after approval: candidate hash mismatch')
         
     status()
     

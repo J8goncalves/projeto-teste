@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from .contracts import CONTRACTS, ROLES, ContractError, digest, load, validate
 from .identity import verify_actor_identity, verify_independence
-from .approvals import verify_human_approval
+from .approvals import verify_human_approval, verify_and_consume_human_approval
 
 PHASES=['INTAKE','DISCOVERY','PLANNING','DESIGN','BUILD','VERIFY','RELEASE','LEARN','CLOSED']
 MODES = {
@@ -249,14 +249,8 @@ def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:st
         save(root,state)
         raise WorkflowError(f"APPROVAL_PENDING: {verification.get('reason')}")
         
-    from .approvals import mark_approval_consumed
     comment_url = verification.get('comment_url', reference)
     canonical_id = verification.get('canonical_id')
-    if canonical_id:
-        mark_approval_consumed(canonical_id, target, run_id, root=root)
-    mark_approval_consumed(reference, target, run_id, root=root)
-    if comment_url != reference:
-        mark_approval_consumed(comment_url, target, run_id, root=root)
         
     state['approvals'][target]={
         'actor':verification['actor'],
@@ -316,14 +310,6 @@ def resume(root:Path,run_id:str,reference:str):
     if verification.get('status') != 'APPROVED':
         raise WorkflowError(f"ESCALATION_RESUME_DENIED: {verification.get('reason', 'unverified reference')}")
         
-    from .approvals import mark_approval_consumed
-    canonical_id = verification.get('canonical_id')
-    if canonical_id:
-        mark_approval_consumed(canonical_id, 'ESCALATION_RESOLVED', run_id, root=root)
-    mark_approval_consumed(reference, 'ESCALATION_RESOLVED', run_id, root=root)
-    comment_url = verification.get('comment_url', reference)
-    if comment_url != reference:
-        mark_approval_consumed(comment_url, 'ESCALATION_RESOLVED', run_id, root=root)
     phase=state['escalation']['from']
     state['phase']=phase
     state['approvals']['ESCALATION_RESOLVED'] = {

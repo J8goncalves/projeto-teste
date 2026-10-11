@@ -50,6 +50,11 @@ def set_actor_context(agent_id: str, role: str, secret_or_authority: str | Runne
     if 'GITHUB_TOKEN' in os.environ:
         from .approvals import set_trusted_github_token
         set_trusted_github_token(os.environ.pop('GITHUB_TOKEN'))
+        
+    # Retire AI_MEMORY_AUTH_TOKEN from executing agent's os.environ into runner memory
+    if 'AI_MEMORY_AUTH_TOKEN' in os.environ:
+        from .memory import set_trusted_memory_token
+        set_trusted_memory_token(os.environ.pop('AI_MEMORY_AUTH_TOKEN'))
     
     if isinstance(secret_or_authority, RunnerAuthority):
         _TRUSTED_RUNNER_AUTHORITY = secret_or_authority
@@ -66,10 +71,12 @@ def clear_actor_context():
     """Clears actor context and runner tokens from environment and resets authority."""
     global _TRUSTED_RUNNER_AUTHORITY
     _TRUSTED_RUNNER_AUTHORITY = None
-    for var in ('AGY_AGENT_INSTANCE_ID', 'AGY_ASSIGNED_ROLE', 'AGY_RUNNER_SECRET', 'AGY_RUNNER_TOKEN'):
+    for var in ('AGY_AGENT_INSTANCE_ID', 'AGY_ASSIGNED_ROLE', 'AGY_RUNNER_SECRET', 'AGY_RUNNER_TOKEN', 'AI_MEMORY_AUTH_TOKEN'):
         os.environ.pop(var, None)
     from .approvals import set_trusted_github_token
     set_trusted_github_token(None)
+    from .memory import set_trusted_memory_token
+    set_trusted_memory_token(None)
 
 def verify_actor_identity(expected_role: str) -> dict:
     """

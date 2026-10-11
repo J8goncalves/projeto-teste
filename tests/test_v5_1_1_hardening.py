@@ -30,12 +30,16 @@ class V511HardeningTests(unittest.TestCase):
         self.run_id = 'RUN-H05-001'
         control.init(self.root, self.run_id, 'Hardening Test Run', 3, 'ENGINEERING_SMALL')
         self.secret = 'runner-master-secret-999'
+        approvals.set_trusted_github_token('test-token')
+        memory.set_trusted_memory_token('6b3e5a81d2026a90a0a7e6fea61cbde6a5ffe567ccd7b3d6be550cd2fb8bfc13')
         set_actor_context('agent-orchestrator', 'orchestrator', self.secret)
         
     def tearDown(self):
         if self.root.exists():
             shutil.rmtree(self.root)
         clear_actor_context()
+        approvals.set_trusted_github_token(None)
+        memory.set_trusted_memory_token(None)
         
     def doc(self, kind='intake', role='orchestrator', aid='A001', inputs=None):
         from org_v5.contracts import CONTRACTS
@@ -142,6 +146,17 @@ class V511HardeningTests(unittest.TestCase):
         self.assertNotIn('GITHUB_TOKEN', os.environ, "GITHUB_TOKEN must not remain in os.environ for executing agents")
         from org_v5.approvals import get_trusted_github_token
         self.assertEqual(get_trusted_github_token(), 'super-secret-gh-token')
+
+    def test_scenario_2d_trusted_github_token_never_falls_back_to_environ(self):
+        """
+        If trusted runner has not set the token, get_trusted_github_token() strictly returns None
+        even if an adversarial agent injects GITHUB_TOKEN into os.environ.
+        """
+        approvals.set_trusted_github_token(None)
+        os.environ['GITHUB_TOKEN'] = 'injected-adversarial-token'
+        self.assertIsNone(approvals.get_trusted_github_token())
+        # Restore for subsequent tests
+        approvals.set_trusted_github_token('test-token')
 
     # --------------------------------------------------------------------------
     # Scenario 3: Aprovação GitHub apontando para repositório, run ou hash incorreto
@@ -350,12 +365,37 @@ class V511HardeningTests(unittest.TestCase):
             memory.promote(self.root, self.run_id, 'NONEXISTENT', 'https://github.com/fake')
 
     def test_scenario_7c_fast_recall_and_status_without_ollama(self):
-        """Verify memory recall and status function via SQLite FTS5."""
+        """Verify memory recall and status function via SQLite FTS5 on real on-prem server."""
+        if not memory.is_live_backend_available():
+            self.skipTest("AI Memory live backend/binary not reachable in this environment (real integration test)")
         stat = memory.status()
         self.assertTrue(stat['connected'])
         self.assertIn('ai-memory', stat['status_excerpt'].lower())
         hits = memory.recall('decision', limit=1)
         self.assertIsInstance(hits, list)
+
+    @patch('org_v5.memory.ai_memory_cli')
+    def test_scenario_7c_mocked_fast_recall_and_status(self, mock_cli):
+        """Unit test: verify memory recall and status parsing logic independently of environment binaries."""
+        mock_cli.side_effect = lambda args, **kwargs: (
+            'ai-memory 2.6.3 (server)\n  backend: onprem' if args[0] == 'status' else
+            json.dumps([{'path': 'memories/decision/D1.md', 'title': 'Decision 1', 'snippet': 'FTS5 hit'}])
+        )
+        stat = memory.status()
+        self.assertTrue(stat['connected'])
+        self.assertEqual(stat['backend'], 'ai-memory-onprem')
+        hits = memory.recall('decision', limit=1)
+        self.assertEqual(len(hits), 1)
+        self.assertEqual(hits[0]['title'], 'Decision 1')
+
+    def test_scenario_7d_direct_unauthorized_mcp_cli_write_rejected(self):
+        """
+        Verify that an ordinary agent attempting to write directly via CLI/MCP
+        is rejected fail-closed without human approval and promotion authority.
+        """
+        with self.assertRaises(control.WorkflowError) as ctx:
+            memory.ai_memory_cli(['write-page', '--path', 'memories/fact/rogue.md', '--body', 'unauthorized'])
+        self.assertIn("Direct write via CLI/MCP forbidden", str(ctx.exception))
 
 if __name__ == '__main__':
     unittest.main()
