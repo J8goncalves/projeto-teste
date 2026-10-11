@@ -1,0 +1,142 @@
+{
+  "version": "5.2",
+  "deny_rules": [
+    {
+      "id": "kill-switch",
+      "tools": ["*"],
+      "condition": "stop_file_exists",
+      "reason": "Kill switch ativo (.agents/state/STOP). Ações modificadoras bloqueadas."
+    },
+    {
+      "id": "run-escalated-paused",
+      "tools": ["write_to_file", "replace_file_content", "multi_replace_file_content", "run_command", "invoke_subagent", "define_subagent", "schedule"],
+      "condition": "run_escalated_or_paused",
+      "reason": "Run em estado ESCALATED ou PAUSED. Apenas leitura e auditoria permitidas."
+    },
+    {
+      "id": "forbidden-tools",
+      "tools": ["schedule", "define_subagent"],
+      "condition": "always",
+      "reason": "Ferramenta proibida nesta organização conforme governança V5.2."
+    },
+    {
+      "id": "secrets-files",
+      "tools": ["view_file", "write_to_file", "replace_file_content", "multi_replace_file_content"],
+      "condition": "path_regex",
+      "pattern": "(^|[\\\\/])(\\.env(?!(\\.example|\\.sample|\\.template))|.*\\.pem$|.*\\.key$|.*\\.p12$|.*\\.pfx$|id_rsa.*|id_ed25519.*|credentials.*\\.json$|\\.npmrc$|\\.pypirc$|.*\\.tfstate$)",
+      "reason": "Acesso a arquivos de segredos bloqueado por política de segurança."
+    },
+    {
+      "id": "secrets-commands",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "(cat|type|more|less|head|tail|Get-Content)\\s+.*\\.env(?!\\.example)|printenv|^env$|\\$env:.*TOKEN|\\$env:.*KEY",
+      "reason": "Inspeção ou exposição de segredos no terminal bloqueada."
+    },
+    {
+      "id": "git-push-main-force",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "git\\s+push\\s+.*(--force|-f|--force-with-lease)|git\\s+push\\s+.*(origin\\s+)?(main|master)|git\\s+merge\\s+.*(main|master)|git\\s+rebase\\s+.*(main|master)",
+      "reason": "Push forçado ou operações diretas em branch principal (main/master) bloqueadas."
+    },
+    {
+      "id": "destructive-catastrophic",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "rm\\s+-r[f]?\\s+(/|~|\\$HOME|C:\\\\|D:\\\\|/mnt/.*)|rd\\s+/s\\s+/q\\s+[C-Z]:\\\\|del\\s+/s\\s+/q\\s+[C-Z]:\\\\",
+      "reason": "Comando destrutivo de escopo amplo bloqueado."
+    },
+    {
+      "id": "protect-org-write",
+      "tools": ["write_to_file", "replace_file_content", "multi_replace_file_content", "run_command"],
+      "condition": "protect_org_active",
+      "protected_prefixes": [".agents/", "org_v5/", "AGENTS.md"],
+      "reason": "Modificação no Core da organização bloqueada por PROTECT_ORG."
+    },
+    {
+      "id": "unauthorized-memory-write",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "memanto\\s+(remember|edit|forget|upload|migrate)|python\\s+-m\\s+org_v5\\.cli\\s+memory-write",
+      "reason": "Escrita em memória fora da rota governada bloqueada."
+    }
+  ],
+  "force_ask_rules": [
+    {
+      "id": "cloud-deploy-publish",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "^(gcloud|aws|az|kubectl|helm|terraform|pulumi|firebase|vercel|netlify|heroku|docker\\s+push|npm\\s+publish)",
+      "reason": "Operação de deploy, infraestrutura em nuvem ou publicação requer confirmação humana explícita."
+    },
+    {
+      "id": "git-public-publication",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "^git\\s+(push|merge|rebase)|^gh\\s+pr\\s+merge",
+      "reason": "Publicação externa no Git requer confirmação humana explícita."
+    },
+    {
+      "id": "package-installation",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "^(npm\\s+(install|i|add)|pip\\s+install|cargo\\s+add|go\\s+get)",
+      "reason": "Instalação de novas dependências requer confirmação."
+    },
+    {
+      "id": "destructive-sensitive",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "rm\\s+-r|Remove-Item\\s+-Recurse|rd\\s+/s|git\\s+clean\\s+-f|git\\s+reset\\s+--hard",
+      "reason": "Confirmação exigida para comando com potencial destrutivo."
+    }
+  ],
+  "allow_rules": [
+    {
+      "id": "safe-read-inspection",
+      "tools": ["view_file", "list_dir", "grep_search", "find_by_name"],
+      "condition": "workspace_safe_path"
+    },
+    {
+      "id": "safe-git-read",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "git"
+    },
+    {
+      "id": "safe-unittest-execution",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "unittest"
+    },
+    {
+      "id": "safe-control-plane-read",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "control_plane"
+    },
+    {
+      "id": "safe-evidence-writer",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "evidence_writer"
+    },
+    {
+      "id": "safe-which-where",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "which_where"
+    },
+    {
+      "id": "safe-subagent-delegation",
+      "tools": ["invoke_subagent"],
+      "condition": "always"
+    },
+    {
+      "id": "safe-workspace-file-write",
+      "tools": ["write_to_file", "replace_file_content", "multi_replace_file_content"],
+      "condition": "workspace_internal_write"
+    }
+  ]
+}

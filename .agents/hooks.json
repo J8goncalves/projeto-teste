@@ -1,6 +1,62 @@
 {
-  "org-guard": {"enabled": false, "PreToolUse": []},
-  "org-budget": {"enabled": false, "PostInvocation": []},
-  "org-state": {"enabled": false, "PreInvocation": []},
-  "org-events": {"enabled": false, "PostToolUse": []}
+  "org-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command|view_file|write_to_file|replace_file_content|multi_replace_file_content|invoke_subagent|define_subagent|schedule",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "..\\.venv\\Scripts\\python.exe scripts/hooks/pretool_guard.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "org-events": {
+    "enabled": true,
+    "PostToolUse": [
+      {
+        "matcher": "run_command|invoke_subagent|write_to_file|replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "..\\.venv\\Scripts\\python.exe scripts/hooks/posttool_events.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "org-budget": {
+    "enabled": true,
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": "..\\.venv\\Scripts\\python.exe scripts/hooks/postinvocation_budget.py",
+        "timeout": 30
+      }
+    ]
+  },
+  "org-state": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "..\\.venv\\Scripts\\python.exe scripts/hooks/preinvocation_state.py",
+        "timeout": 30
+      }
+    ]
+  },
+  "org-stop": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "..\\.venv\\Scripts\\python.exe scripts/hooks/stop_guard.py",
+        "timeout": 30
+      }
+    ]
+  }
 }

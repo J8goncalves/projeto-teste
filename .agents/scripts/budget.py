@@ -34,18 +34,24 @@ def status(run):
             for line in f:
                 if line.strip(): used += 1
                 
+    # Support both level (V5.2) and nivel (legacy)
     nivel = 1
     if os.path.exists(state_file):
         with open(state_file, 'r', encoding='utf-8') as f:
             state = json.load(f)
-            nivel = state.get('nivel', 1)
+            nivel = state.get('level', state.get('nivel', 1))
             
-    limits_file = os.path.join(root, '.agents', 'policies', 'autonomy.json')
-    limit = 100
-    if os.path.exists(limits_file):
-        with open(limits_file, 'r', encoding='utf-8') as f:
-            limits = json.load(f)
-            limit = limits.get('niveis', {}).get(str(nivel), {}).get('max_invocations', 100)
+    # Read from .agents/policies/levels.json (invocacoes_max)
+    levels_file = os.path.join(root, '.agents', 'policies', 'levels.json')
+    limit = 120
+    if os.path.exists(levels_file):
+        try:
+            with open(levels_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                niveis_map = data.get('niveis', {})
+                limit = niveis_map.get(str(nivel), {}).get('invocacoes_max', 120)
+        except Exception:
+            limit = 120
             
     pct = (used / limit * 100) if limit > 0 else 0
     print(f"Run {run} - Nível {nivel}")

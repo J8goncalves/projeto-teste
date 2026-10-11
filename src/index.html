@@ -568,7 +568,8 @@
             .filter-group {
                 justify-content: space-between;
             }
-            .filter-btn {
+            .filter-btn,
+            .filter-group .btn {
                 flex: 1 1 auto;
                 text-align: center;
             }
@@ -657,6 +658,7 @@
                     <button type="button" class="filter-btn" data-filter="TODO" aria-pressed="false">A Fazer</button>
                     <button type="button" class="filter-btn" data-filter="IN_PROGRESS" aria-pressed="false">Em Andamento</button>
                     <button type="button" class="filter-btn" data-filter="DONE" aria-pressed="false">Concluídas</button>
+                    <button type="button" id="clearFiltersBtn" class="btn btn-secondary btn-sm" aria-label="Limpar filtros e busca" title="Limpar filtros e busca">Limpar filtros</button>
                 </div>
 
                 <div class="backup-group">
