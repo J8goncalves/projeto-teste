@@ -703,8 +703,170 @@ async function runTests() {
 
     console.log('✓ Teste 14 passou: Botão Limpar filtros validado com limpeza de busca, restauração de status, aria-pressed, suporte a teclado e persistência inalterada.');
 
+    // =========================================================================
+    // NOVOS TESTES OBRIGATÓRIOS DO EMPTY STATE CONTEXTUAL (AC-EMPTY-01 a 05)
+    // =========================================================================
+
+    // Teste 15 (AC-EMPTY-01): Base Vazia (Onboarding) - Mensagem, CTA Criar Primeira Tarefa, Foco e Live Region
+    console.log('[Teste 15 - AC-EMPTY-01] Verificando Empty State de Base Vazia (Onboarding)...');
+    global.localStorage.clear();
+    global._elements = {};
+    delete global._filterBtns;
+    eval(appCode);
+
+    const store15 = global.__taskStore;
+    assert.strictEqual(store15.tasks.length, 0, 'Base de tarefas deve iniciar vazia');
+
+    const emptyState15 = global.document.getElementById('emptyState');
+    const emptyStateMessage15 = global.document.getElementById('emptyStateMessage');
+    const emptyStateActionBtn15 = global.document.getElementById('emptyStateActionBtn');
+    const taskInput15 = global.document.getElementById('taskInput');
+    const announcer15 = global.document.getElementById('screenReaderAnnouncer');
+
+    assert.strictEqual(emptyState15.style.display, 'block', 'Empty State deve estar visível para base vazia');
+    assert.strictEqual(emptyStateMessage15.textContent, 'Você ainda não possui tarefas cadastradas.', 'Mensagem de onboarding correta');
+    assert.strictEqual(emptyStateActionBtn15.textContent, 'Criar primeira tarefa', 'Texto do botão de onboarding correto');
+    assert.strictEqual(emptyStateActionBtn15.classList.contains('btn-primary'), true, 'Botão deve ter classe btn-primary');
+    assert.strictEqual(emptyStateActionBtn15.classList.contains('empty-state-btn'), true, 'Botão deve ter classe empty-state-btn');
+
+    // Acionamento via clique move o foco para #taskInput e anuncia na live region
+    emptyStateActionBtn15.click();
+    assert.strictEqual(global.document.activeElement, taskInput15, 'Foco deve ser direcionado para taskInput');
+    assert.strictEqual(announcer15.textContent, 'Campo de nova tarefa focado.', 'Anúncio acessível emitido na live region');
+    assert.strictEqual(store15.tasks.length, 0, 'Nenhuma tarefa espúria deve ser criada pelo clique no CTA');
+
+    // Acionamento via teclado (Enter e Espaço)
+    global.document.activeElement = null;
+    assert(typeof emptyStateActionBtn15.onkeydown === 'function', 'Listener de keydown deve existir');
+    emptyStateActionBtn15.onkeydown({ key: 'Enter', preventDefault: () => {} });
+    assert.strictEqual(global.document.activeElement, taskInput15, 'Tecla Enter deve direcionar foco para taskInput');
+
+    global.document.activeElement = null;
+    emptyStateActionBtn15.onkeydown({ key: ' ', preventDefault: () => {} });
+    assert.strictEqual(global.document.activeElement, taskInput15, 'Tecla Espaço deve direcionar foco para taskInput');
+    console.log('✓ Teste 15 passou: AC-EMPTY-01 validado com mensagem acolhedora, CTA primário, foco previsível em taskInput e live region.');
+
+    // Teste 16 (AC-EMPTY-02): Filtros e Busca Sem Correspondência - Mensagem Contextual, CTA Limpar Filtros e Foco
+    console.log('[Teste 16 - AC-EMPTY-02] Verificando Empty State para Filtros e Busca Sem Resultado...');
+    store15.add('Desenvolver funcionalidade X', 'Desc X', 'Crit X');
+    store15.add('Testar funcionalidade Y', 'Desc Y', 'Crit Y');
+    assert.strictEqual(store15.tasks.length, 2, 'Devem existir 2 tarefas');
+
+    const searchInput16 = global.document.getElementById('searchInput');
+    const filterBtns16 = global.document.querySelectorAll('.filter-btn');
+    const taskList16 = global.document.getElementById('taskList');
+    const btnFilterAll16 = filterBtns16.find(b => b.getAttribute('data-filter') === 'ALL');
+    const btnFilterTodo16 = filterBtns16.find(b => b.getAttribute('data-filter') === 'TODO');
+
+    // Renderiza tarefas com filtro ALL
+    btnFilterAll16.click();
+    assert.strictEqual(emptyState15.style.display, 'none', 'Empty state deve estar oculto quando há tarefas visíveis');
+    assert.strictEqual(taskList16.children.length, 2);
+
+    // Aplica termo de busca sem correspondência
+    searchInput16.value = 'TermoQueNaoExiste12345';
+    searchInput16.oninput({ target: searchInput16 });
+
+    assert.strictEqual(taskList16.children.length, 0, 'Lista deve estar vazia após filtro');
+    assert.strictEqual(emptyState15.style.display, 'block', 'Empty state deve estar visível');
+    assert.strictEqual(emptyStateMessage15.textContent, 'Nenhuma tarefa encontrada para os critérios selecionados.', 'Mensagem de filtro sem resultado correta');
+    assert.strictEqual(emptyStateActionBtn15.textContent, 'Limpar filtros e busca', 'Texto do botão de limpar filtros correto');
+    assert.strictEqual(emptyStateActionBtn15.classList.contains('btn-secondary'), true, 'Botão deve ter classe btn-secondary');
+    assert.strictEqual(emptyStateActionBtn15.classList.contains('empty-state-btn'), true, 'Botão deve ter classe empty-state-btn');
+
+    // Aciona botão de ação via clique
+    emptyStateActionBtn15.click();
+    assert.strictEqual(searchInput16.value, '', 'Campo de busca deve ser esvaziado');
+    assert.strictEqual(btnFilterAll16.classList.contains('active'), true, 'Filtro ALL deve ser restaurado como ativo');
+    assert.strictEqual(btnFilterAll16.getAttribute('aria-pressed'), 'true', 'aria-pressed deve ser true');
+    assert.strictEqual(taskList16.children.length, 2, 'Todas as tarefas existentes devem ser re-renderizadas');
+    assert.strictEqual(emptyState15.style.display, 'none', 'Empty state deve ser ocultado');
+    assert.strictEqual(global.document.activeElement, searchInput16, 'Foco deve ser direcionado para searchInput');
+    assert.strictEqual(announcer15.textContent, 'Filtros limpos. Exibindo todas as tarefas.', 'Anúncio acessível emitido na live region');
+
+    // Testa acionamento por teclado com filtro de status sem itens
+    const btnFilterDone16 = filterBtns16.find(b => b.getAttribute('data-filter') === 'DONE');
+    btnFilterDone16.click();
+    assert.strictEqual(taskList16.children.length, 0, 'Nenhuma tarefa concluída no momento');
+    assert.strictEqual(emptyState15.style.display, 'block', 'Empty state visível com filtro sem itens');
+
+    global.document.activeElement = null;
+    emptyStateActionBtn15.onkeydown({ key: 'Enter', preventDefault: () => {} });
+    assert.strictEqual(taskList16.children.length, 2, 'Todas as tarefas restauradas após Enter');
+    assert.strictEqual(global.document.activeElement, searchInput16, 'Foco direcionado para searchInput após Enter');
+    console.log('✓ Teste 16 passou: AC-EMPTY-02 validado com mensagem de filtro, restauração atômica, foco previsível em searchInput e live region.');
+
+    // Teste 17 (AC-EMPTY-03): Ocultação Imediata ao Adicionar Tarefas ou Redefinir Filtros
+    console.log('[Teste 17 - AC-EMPTY-03] Verificando Ocultação Imediata do Empty State...');
+    global.localStorage.clear();
+    global._elements = {};
+    delete global._filterBtns;
+    eval(appCode);
+
+    const store17 = global.__taskStore;
+    const emptyState17 = global.document.getElementById('emptyState');
+    const taskInput17 = global.document.getElementById('taskInput');
+    const addBtn17 = global.document.getElementById('addBtn');
+    const taskList17 = global.document.getElementById('taskList');
+
+    assert.strictEqual(emptyState17.style.display, 'block', 'Empty state inicial visível');
+
+    // Adiciona nova tarefa
+    taskInput17.value = 'Minha Primeira Tarefa Real';
+    addBtn17.click();
+
+    assert.strictEqual(store17.tasks.length, 1, 'Tarefa adicionada com sucesso');
+    assert.strictEqual(emptyState17.style.display, 'none', 'Empty state DEVE ser imediatamente ocultado quando filtered.length > 0');
+    assert.strictEqual(taskList17.children.length, 1, 'Card de tarefa deve ser renderizado na lista');
+
+    console.log('✓ Teste 17 passou: AC-EMPTY-03 validado com ocultação imediata do componente empty state ao adicionar tarefa.');
+
+    // Teste 18 (AC-EMPTY-04): Acessibilidade WCAG 2.2 AA (role=status, :focus-visible, teclado e live region)
+    console.log('[Teste 18 - AC-EMPTY-04] Verificando Conformidade de Acessibilidade WCAG 2.2 AA...');
+    const htmlPath = path.join(__dirname, '../src/index.html');
+    const htmlContent = fs.readFileSync(htmlPath, 'utf8');
+
+    // Validação estática da estrutura HTML
+    assert(htmlContent.includes('id="emptyState" class="empty-state" role="status"'), 'Elemento #emptyState deve possuir role="status"');
+    assert(htmlContent.includes('<p id="emptyStateMessage"></p>'), 'Elemento #emptyStateMessage deve existir no HTML');
+    assert(htmlContent.includes('<button type="button" id="emptyStateActionBtn" class="btn btn-secondary empty-state-btn"></button>'), 'Elemento #emptyStateActionBtn com atributos e classes corretas deve existir');
+
+    // Validação das regras CSS de foco visível
+    assert(htmlContent.includes('.empty-state-btn:focus-visible'), 'Regra CSS :focus-visible deve estar definida para .empty-state-btn');
+    assert(htmlContent.includes('outline: 3px solid var(--border-focus);'), 'Outline deve possuir espessura e contraste definidos');
+    assert(htmlContent.includes('outline-offset: 2px;'), 'Outline offset deve estar definido');
+
+    // Validação em tempo de execução dos listeners de teclado
+    const emptyStateBtn18 = global.document.getElementById('emptyStateActionBtn');
+    assert(typeof emptyStateBtn18.onkeydown === 'function', 'Listener de keydown para acessibilidade deve estar registrado no botão');
+
+    console.log('✓ Teste 18 passou: AC-EMPTY-04 validado com role=status, regras :focus-visible, teclado e comunicação assistiva.');
+
+    // Teste 19 (AC-EMPTY-05): Prevenção Estrita contra Cross-Site Scripting (XSS)
+    console.log('[Teste 19 - AC-EMPTY-05] Verificando Prevenção Estrita de XSS via textContent...');
+    const searchInput19 = global.document.getElementById('searchInput');
+    const emptyStateMsg19 = global.document.getElementById('emptyStateMessage');
+    const xssPayload = '<script>alert("xss")</script><img src=x onerror=alert(1)>';
+
+    searchInput19.value = xssPayload;
+    searchInput19.oninput({ target: searchInput19 });
+
+    // Mensagem exibida deve ser estática e segura, sem injeção HTML
+    assert.strictEqual(emptyStateMsg19.textContent, 'Nenhuma tarefa encontrada para os critérios selecionados.', 'Mensagem segura preservada');
+    assert(!emptyStateMsg19.textContent.includes('<script>'), 'Payload XSS não deve constar na mensagem');
+
+    // Auditoria estática de código de src/app.js para garantir ausência de innerHTML no Empty State
+    const appSource = fs.readFileSync(path.join(__dirname, '../src/app.js'), 'utf8');
+    assert(!appSource.includes('emptyState.innerHTML ='), 'emptyState nunca deve ter atribuição via innerHTML');
+    assert(!appSource.includes('emptyStateMessage.innerHTML ='), 'emptyStateMessage nunca deve ter atribuição via innerHTML');
+    assert(!appSource.includes('emptyStateActionBtn.innerHTML ='), 'emptyStateActionBtn nunca deve ter atribuição via innerHTML');
+    assert(appSource.includes('emptyStateMessage.textContent ='), 'emptyStateMessage deve usar estritamente textContent');
+    assert(appSource.includes('emptyStateActionBtn.textContent ='), 'emptyStateActionBtn deve usar estritamente textContent');
+
+    console.log('✓ Teste 19 passou: AC-EMPTY-05 validado com prevenção estrita de XSS e uso exclusivo de textContent e APIs seguras.');
+
     console.log('\n========================================================================');
-    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (14/14 cenários de alta precisão)!');
+    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (19/19 cenários de alta precisão)!');
     console.log('========================================================================');
 }
 

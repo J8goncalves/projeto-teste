@@ -340,6 +340,8 @@
         const errorMsg = document.getElementById('errorMsg');
         const taskList = document.getElementById('taskList');
         const emptyState = document.getElementById('emptyState');
+        const emptyStateMessage = document.getElementById('emptyStateMessage');
+        const emptyStateActionBtn = document.getElementById('emptyStateActionBtn');
         const searchInput = document.getElementById('searchInput');
         const filterBtns = document.querySelectorAll('.filter-btn');
         const clearFiltersBtn = document.getElementById('clearFiltersBtn');
@@ -455,7 +457,28 @@
             const filtered = store.filter(searchQuery, currentFilter);
 
             if (emptyState) {
-                emptyState.style.display = filtered.length === 0 ? 'block' : 'none';
+                if (filtered.length === 0) {
+                    emptyState.style.display = 'block';
+                    if (store.tasks.length === 0) {
+                        if (emptyStateMessage) {
+                            emptyStateMessage.textContent = 'Você ainda não possui tarefas cadastradas.';
+                        }
+                        if (emptyStateActionBtn) {
+                            emptyStateActionBtn.textContent = 'Criar primeira tarefa';
+                            emptyStateActionBtn.className = 'btn btn-primary empty-state-btn';
+                        }
+                    } else {
+                        if (emptyStateMessage) {
+                            emptyStateMessage.textContent = 'Nenhuma tarefa encontrada para os critérios selecionados.';
+                        }
+                        if (emptyStateActionBtn) {
+                            emptyStateActionBtn.textContent = 'Limpar filtros e busca';
+                            emptyStateActionBtn.className = 'btn btn-secondary empty-state-btn';
+                        }
+                    }
+                } else {
+                    emptyState.style.display = 'none';
+                }
             }
 
             filtered.forEach(task => {
@@ -801,6 +824,51 @@
             clearFiltersBtn.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32) {
                     handleClearFilters(e);
+                }
+            });
+        }
+
+        // Botão de Ação do Empty State Contextual
+        if (emptyStateActionBtn) {
+            const handleEmptyStateAction = (e) => {
+                if (e && typeof e.preventDefault === 'function') {
+                    e.preventDefault();
+                }
+                if (store.tasks.length === 0) {
+                    if (taskInput && typeof taskInput.focus === 'function') {
+                        taskInput.focus();
+                    }
+                    notifyUser('Campo de nova tarefa focado.');
+                } else {
+                    if (searchInput) {
+                        searchInput.value = '';
+                    }
+                    searchQuery = '';
+                    currentFilter = 'ALL';
+                    if (filterBtns && filterBtns.length > 0) {
+                        filterBtns.forEach(btn => {
+                            const filterVal = btn.getAttribute('data-filter');
+                            if (filterVal === 'ALL') {
+                                btn.classList.add('active');
+                                btn.setAttribute('aria-pressed', 'true');
+                            } else {
+                                btn.classList.remove('active');
+                                btn.setAttribute('aria-pressed', 'false');
+                            }
+                        });
+                    }
+                    renderTasks();
+                    if (searchInput && typeof searchInput.focus === 'function') {
+                        searchInput.focus();
+                    }
+                    notifyUser('Filtros limpos. Exibindo todas as tarefas.');
+                }
+            };
+
+            emptyStateActionBtn.addEventListener('click', handleEmptyStateAction);
+            emptyStateActionBtn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32) {
+                    handleEmptyStateAction(e);
                 }
             });
         }
