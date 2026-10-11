@@ -180,7 +180,7 @@ class V51GovernanceTests(unittest.TestCase):
         os.environ['GITHUB_TOKEN'] = 'fake_token'
         mock_urlopen.side_effect = Exception("API Error")
         with self.assertRaises(control.WorkflowError) as ctx:
-            control.approval(self.root, 'RUN-TEST', 'BUILD', 'APPROVE', 'human', 'https://github.com/J8goncalves/projeto-teste/issues/1')
+            control.approval(self.root, 'RUN-TEST', 'BUILD', 'APPROVE', 'human', 'https://github.com/J8goncalves/projeto-teste/issues/1', expected_sha='a'*64)
         self.assertIn("APPROVAL_PENDING: GitHub API check failed: API Error", str(ctx.exception))
         
 

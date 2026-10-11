@@ -110,18 +110,57 @@ class V511HardeningTests(unittest.TestCase):
             control.review(self.root, self.run_id, build_id, 'implementation-reviewer', 'ACCEPT', 'same instance review')
         self.assertIn("same agent instance cannot review its own artifact", str(ctx2.exception))
 
+    def test_scenario_2b_adversary_reading_secret_in_environ_forging_hmac_rejected(self):
+        """
+        Adversary agent that discovers or injects AGY_RUNNER_SECRET into os.environ,
+        generates a valid HMAC with it, and attempts to assume reviewer role.
+        The environment is flagged as compromised (UNVERIFIED) and critical review is blocked.
+        """
+        build_id = self.seed_up_to_build()
+        leaked_secret = 'stolen-runner-secret-xyz'
+        os.environ['AGY_RUNNER_SECRET'] = leaked_secret
+        forged_token = sign_runner_token('rogue-agent', 'implementation-reviewer', leaked_secret)
+        os.environ['AGY_RUNNER_TOKEN'] = forged_token
+        os.environ['AGY_AGENT_INSTANCE_ID'] = 'rogue-agent'
+        os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
+
+        ident = verify_actor_identity('implementation-reviewer')
+        self.assertEqual(ident['assurance'], 'UNVERIFIED')
+        self.assertIn('AGY_RUNNER_SECRET exposed in agent process environment', ident['reason'])
+
+        with self.assertRaises(control.WorkflowError) as ctx:
+            control.review(self.root, self.run_id, build_id, 'implementation-reviewer', 'ACCEPT', 'forged token attempt')
+        self.assertIn("critical gate 'build' requires verified independent reviewer", str(ctx.exception))
+
+    def test_scenario_2c_github_token_isolated_from_executing_agents(self):
+        """
+        GITHUB_TOKEN is stripped from os.environ upon setting agent execution context,
+        preventing code-executing agents from accessing credentials.
+        """
+        os.environ['GITHUB_TOKEN'] = 'super-secret-gh-token'
+        set_actor_context('agent-worker', 'developer', self.secret)
+        self.assertNotIn('GITHUB_TOKEN', os.environ, "GITHUB_TOKEN must not remain in os.environ for executing agents")
+        from org_v5.approvals import get_trusted_github_token
+        self.assertEqual(get_trusted_github_token(), 'super-secret-gh-token')
+
     # --------------------------------------------------------------------------
     # Scenario 3: Aprovação GitHub apontando para repositório, run ou hash incorreto
     # --------------------------------------------------------------------------
-    def test_scenario_3a_cross_repository_approval_rejected(self):
+    def test_scenario_3a_missing_expected_sha_rejected(self):
+        """Calling control.approval on pertinent gates without expected_sha is blocked."""
+        with self.assertRaises(control.WorkflowError) as ctx:
+            control.approval(self.root, self.run_id, 'BUILD', 'APPROVE', 'human', 'https://github.com/J8goncalves/projeto-teste/issues/1')
+        self.assertIn("requires an explicit or state-derived immutable expected_sha", str(ctx.exception))
+
+    def test_scenario_3b_cross_repository_approval_rejected(self):
         # Human approval pointing to foreign repository
         foreign_url = 'https://github.com/evil-attacker/malicious-repo/issues/10'
         with self.assertRaises(control.WorkflowError) as ctx:
-            control.approval(self.root, self.run_id, 'BUILD', 'APPROVE', 'human', foreign_url)
+            control.approval(self.root, self.run_id, 'BUILD', 'APPROVE', 'human', foreign_url, expected_sha='dummy_sha')
         self.assertIn("Cross-repository approval rejected", str(ctx.exception))
 
     @patch('org_v5.approvals.urllib.request.urlopen')
-    def test_scenario_3b_wrong_run_id_or_hash_approval_rejected(self, mock_urlopen):
+    def test_scenario_3c_wrong_run_id_or_hash_approval_rejected(self, mock_urlopen):
         os.environ['GITHUB_TOKEN'] = 'test-token'
         # Comment payload with mismatched run ID
         fake_response = [{
@@ -131,36 +170,89 @@ class V511HardeningTests(unittest.TestCase):
             'html_url': 'https://github.com/J8goncalves/projeto-teste/issues/1#issuecomment-1001',
             'body': 'APPROVE_TARGET: BUILD\nRUN_ID: RUN-OTHER-999\nDECISION: APPROVE\nSHA: expected-sha'
         }]
-        from io import BytesIO
         mock_urlopen.return_value.__enter__.return_value.read.return_value = json.dumps(fake_response).encode('utf-8')
         
         target_url = 'https://github.com/J8goncalves/projeto-teste/issues/1'
         with self.assertRaises(control.WorkflowError) as ctx:
-            control.approval(self.root, self.run_id, 'BUILD', 'APPROVE', 'human', target_url)
+            control.approval(self.root, self.run_id, 'BUILD', 'APPROVE', 'human', target_url, expected_sha='expected-sha')
         self.assertIn("No matching valid approval comment found", str(ctx.exception))
 
     # --------------------------------------------------------------------------
     # Scenario 4: Reutilização de aprovação humana entre gates ou runs (anti-replay)
     # --------------------------------------------------------------------------
     @patch('org_v5.approvals.urllib.request.urlopen')
-    def test_scenario_4_human_approval_replay_rejected(self, mock_urlopen):
+    def test_scenario_4a_human_approval_replay_rejected(self, mock_urlopen):
         os.environ['GITHUB_TOKEN'] = 'test-token'
         fake_response = [{
             'id': 2001,
             'user': {'login': 'j8goncalves'},
             'author_association': 'OWNER',
             'html_url': 'https://github.com/J8goncalves/projeto-teste/issues/1#issuecomment-2001',
-            'body': f'APPROVE_TARGET: BUILD\nRUN_ID: {self.run_id}\nDECISION: APPROVE'
+            'body': f'APPROVE_TARGET: BUILD\nRUN_ID: {self.run_id}\nDECISION: APPROVE\nSHA: sha-build-001'
         }]
         mock_urlopen.return_value.__enter__.return_value.read.return_value = json.dumps(fake_response).encode('utf-8')
         
         ref = 'https://github.com/J8goncalves/projeto-teste/issues/1#issuecomment-2001'
-        control.approval(self.root, self.run_id, 'BUILD', 'APPROVE', 'human', ref)
+        control.approval(self.root, self.run_id, 'BUILD', 'APPROVE', 'human', ref, expected_sha='sha-build-001')
         
         # Attacker tries to reuse the same comment reference for gate RELEASE
         with self.assertRaises(control.WorkflowError) as ctx:
-            control.approval(self.root, self.run_id, 'RELEASE', 'APPROVE', 'human', ref)
+            control.approval(self.root, self.run_id, 'RELEASE', 'APPROVE', 'human', ref, expected_sha='sha-build-001')
         self.assertIn("replay error: approval reference already used for gate BUILD", str(ctx.exception))
+
+    @patch('org_v5.approvals.urllib.request.urlopen')
+    def test_scenario_4b_canonical_comment_id_cross_url_replay_rejected(self, mock_urlopen):
+        """
+        Anti-replay by canonical comment ID: Approving via generic issue URL consumes comment 3001.
+        Reusing it via specific #issuecomment-3001 URL on another run or gate is rejected.
+        """
+        os.environ['GITHUB_TOKEN'] = 'test-token'
+        fake_response = [{
+            'id': 3001,
+            'user': {'login': 'j8goncalves'},
+            'author_association': 'OWNER',
+            'html_url': 'https://github.com/J8goncalves/projeto-teste/issues/10#issuecomment-3001',
+            'body': f'APPROVE_TARGET: BUILD\nRUN_ID: {self.run_id}\nDECISION: APPROVE\nSHA: sha-canon-01'
+        }]
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = json.dumps(fake_response).encode('utf-8')
+
+        # Approve using issue URL
+        issue_url = 'https://github.com/J8goncalves/projeto-teste/issues/10'
+        control.approval(self.root, self.run_id, 'BUILD', 'APPROVE', 'human', issue_url, expected_sha='sha-canon-01')
+
+        # Now attempt replay in a separate run using direct comment fragment URL
+        run2 = 'RUN-H05-002'
+        control.init(self.root, run2, 'Second Run', 3, 'ENGINEERING_SMALL')
+        comment_url = 'https://github.com/J8goncalves/projeto-teste/issues/10#issuecomment-3001'
+        with self.assertRaises(control.WorkflowError) as ctx:
+            control.approval(self.root, run2, 'BUILD', 'APPROVE', 'human', comment_url, expected_sha='sha-canon-01')
+        self.assertIn("Approval replay detected", str(ctx.exception))
+
+    def test_scenario_4c_anti_replay_store_corruption_fails_closed(self):
+        """Fail-closed behavior: reading corrupted anti-replay store blocks execution."""
+        consumed_path = approvals.get_consumed_approvals_path(self.root)
+        consumed_path.parent.mkdir(parents=True, exist_ok=True)
+        consumed_path.write_text("CORRUPTED-NOT-JSON-CONTENT", encoding='utf-8')
+
+        with self.assertRaises(control.WorkflowError) as ctx:
+            approvals.is_approval_consumed("https://github.com/J8goncalves/projeto-teste/issues/1", self.root)
+        self.assertIn("Anti-replay registry read failure (fail-closed)", str(ctx.exception))
+
+    def test_scenario_4d_concurrent_anti_replay_marking_and_detection(self):
+        """Concurrency test: multiple concurrent operations consuming approvals safely without registry loss."""
+        import concurrent.futures
+        keys = [f"j8goncalves/projeto-teste#issuecomment-{i}" for i in range(20)]
+        
+        def consume(k):
+            approvals.mark_approval_consumed(k, 'BUILD', self.run_id, self.root)
+            return approvals.is_approval_consumed(k, self.root)
+            
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(consume, keys))
+            
+        self.assertTrue(all(results))
+        for k in keys:
+            self.assertTrue(approvals.is_approval_consumed(k, self.root))
 
     # --------------------------------------------------------------------------
     # Scenario 5: Encerramento de escalação com URL arbitrária sem aprovação válida
@@ -189,18 +281,20 @@ class V511HardeningTests(unittest.TestCase):
         )
         memory.propose(self.root, self.run_id, proposal)
         cand_text_hash = hashlib.sha256(proposal['text'].encode('utf-8')).hexdigest()
+        cand_digest = memory.candidate_digest(proposal)
         
         # 6a. Attempting promote without human approval in state
         with self.assertRaises(control.WorkflowError) as ctx1:
             memory.promote(self.root, self.run_id, 'MC001', 'https://github.com/J8goncalves/projeto-teste/issues/5')
-        self.assertIn("human memory-write approval with exact matching reference required", str(ctx1.exception))
+        self.assertIn("human memory-write approval with exact matching reference", str(ctx1.exception))
         
-        # Record approval specifically bound to MC001 and its content hash
+        # Record approval specifically bound to MC001, full digest, and text hash
         app_ref = 'https://github.com/J8goncalves/projeto-teste/issues/5#issuecomment-99'
         state = control.read(self.root, self.run_id)
         state['approvals']['MEMORY_WRITE'] = {
             'actor': 'j8goncalves', 'decision': 'APPROVE', 'reference': app_ref,
-            'verified': True, 'candidate_id': 'MC001', 'content_sha256': cand_text_hash
+            'verified': True, 'candidate_id': 'MC001', 'content_sha256': cand_text_hash,
+            'candidate_digest': cand_digest
         }
         control.save(self.root, state)
         
@@ -218,9 +312,17 @@ class V511HardeningTests(unittest.TestCase):
         with self.assertRaises(control.WorkflowError) as ctx3:
             memory.promote(self.root, self.run_id, 'MC001', app_ref)
         self.assertIn("candidate text modified after approval: content hash mismatch", str(ctx3.exception))
+
+        # 6c-2. Metadata tampering (e.g. changing tags, reason, or provenance)
+        cand_data['text'] = proposal['text']
+        cand_data['tags'] = ['dec-001', 'qa', 'malicious-injected-tag']
+        cand_path.write_text(json.dumps(cand_data), encoding='utf-8')
+        with self.assertRaises(control.WorkflowError) as ctx_meta:
+            memory.promote(self.root, self.run_id, 'MC001', app_ref)
+        self.assertIn("candidate full specification modified after approval", str(ctx_meta.exception))
         
         # Restore valid content and promote successfully
-        cand_data['text'] = proposal['text']
+        cand_data['tags'] = proposal['tags']
         cand_path.write_text(json.dumps(cand_data), encoding='utf-8')
         res = memory.promote(self.root, self.run_id, 'MC001', app_ref)
         self.assertEqual(res['status'], 'stored')
@@ -233,13 +335,27 @@ class V511HardeningTests(unittest.TestCase):
     # --------------------------------------------------------------------------
     # Scenario 7: Gravação de memória institucional por caminho alternativo não autorizado
     # --------------------------------------------------------------------------
-    def test_scenario_7_unauthorized_memory_write_path_blocked(self):
+    def test_scenario_7a_direct_cli_mcp_write_blocked_outside_promote(self):
+        """Direct CLI/MCP write commands are intercepted and forbidden outside promote()."""
+        with self.assertRaises(control.WorkflowError) as ctx:
+            memory.ai_memory_cli(['write-page', '--path', 'memories/fact/rogue.md', '--body', 'rogue body'])
+        self.assertIn("Direct write via CLI/MCP forbidden", str(ctx.exception))
+
+    def test_scenario_7b_unauthorized_memory_write_path_blocked(self):
         # Verify that legacy alias memanto was permanently deleted
         self.assertFalse(hasattr(memory, 'memanto'), "Legacy alias 'memanto' must be removed in V5.1.1")
         
         # Verify candidate cannot be stored directly if unapproved
         with self.assertRaises(control.WorkflowError):
             memory.promote(self.root, self.run_id, 'NONEXISTENT', 'https://github.com/fake')
+
+    def test_scenario_7c_fast_recall_and_status_without_ollama(self):
+        """Verify memory recall and status function via SQLite FTS5."""
+        stat = memory.status()
+        self.assertTrue(stat['connected'])
+        self.assertIn('ai-memory', stat['status_excerpt'].lower())
+        hits = memory.recall('decision', limit=1)
+        self.assertIsInstance(hits, list)
 
 if __name__ == '__main__':
     unittest.main()

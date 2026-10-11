@@ -209,7 +209,7 @@ def review(root:Path,run_id:str,artifact_id:str,reviewer:str,verdict:str,reason:
     save(root,state)
     return state['phase']
 
-def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:str):
+def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:str,expected_sha:str=None,candidate_id:str=None):
     state=read(root,run_id)
     if target not in HUMAN_STATES and target!='MEMORY_WRITE' and target!='ESCALATION_RESOLVED':
         raise WorkflowError('target is not a human-approval gate')
@@ -221,7 +221,27 @@ def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:st
         if existing_target != target and app.get('reference') == reference:
             raise WorkflowError(f"replay error: approval reference already used for gate {existing_target}")
             
-    verification = verify_human_approval(reference, target, run_id, root=root)
+    # Resolve expected_sha for pertinent gates if not explicitly passed
+    if not expected_sha:
+        if target == 'BUILD':
+            arch_items = [m['sha256'] for aid, m in state.get('artifacts', {}).items() if m.get('kind') == 'architecture' and aid in state.get('accepted', {})]
+            if arch_items:
+                expected_sha = arch_items[-1]
+        elif target == 'RELEASE':
+            build_items = [m['sha256'] for aid, m in state.get('artifacts', {}).items() if m.get('kind') == 'build' and aid in state.get('accepted', {})]
+            if build_items:
+                expected_sha = build_items[-1]
+        elif target == 'MEMORY_WRITE' and candidate_id:
+            cand_p = run_dir(root, run_id) / 'memory-candidates' / f'{candidate_id}.json'
+            if cand_p.exists():
+                from .memory import candidate_digest
+                cand_data = json.loads(cand_p.read_text(encoding='utf-8'))
+                expected_sha = candidate_digest(cand_data)
+
+    if target in ('BUILD', 'RELEASE', 'MEMORY_WRITE') and not expected_sha:
+        raise WorkflowError(f"gate '{target}' requires an explicit or state-derived immutable expected_sha (artifact or commit hash)")
+
+    verification = verify_human_approval(reference, target, run_id, expected_sha=expected_sha, expected_candidate_id=candidate_id, root=root)
     
     if verification['status'] == 'PENDING_HUMAN':
         state['approvals'][target]={'actor':actor,'decision':'PENDING_HUMAN','reference':reference,'at':stamp(), 'reason': verification.get('reason')}
@@ -231,6 +251,9 @@ def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:st
         
     from .approvals import mark_approval_consumed
     comment_url = verification.get('comment_url', reference)
+    canonical_id = verification.get('canonical_id')
+    if canonical_id:
+        mark_approval_consumed(canonical_id, target, run_id, root=root)
     mark_approval_consumed(reference, target, run_id, root=root)
     if comment_url != reference:
         mark_approval_consumed(comment_url, target, run_id, root=root)
@@ -240,10 +263,13 @@ def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:st
         'decision':decision,
         'reference':reference,
         'comment_url': comment_url,
+        'canonical_id': canonical_id,
+        'sha256': expected_sha or verification.get('sha256'),
         'at':stamp(),
         'verified': True,
-        'candidate_id': verification.get('candidate_id'),
-        'content_sha256': verification.get('content_sha256')
+        'candidate_id': candidate_id or verification.get('candidate_id'),
+        'content_sha256': verification.get('content_sha256'),
+        'candidate_digest': verification.get('candidate_digest')
     }
     state['history'].append({'at':stamp(),'action':'human_decision','target':target,'decision':decision,'reference':reference})
     save(root,state)
@@ -291,7 +317,13 @@ def resume(root:Path,run_id:str,reference:str):
         raise WorkflowError(f"ESCALATION_RESUME_DENIED: {verification.get('reason', 'unverified reference')}")
         
     from .approvals import mark_approval_consumed
+    canonical_id = verification.get('canonical_id')
+    if canonical_id:
+        mark_approval_consumed(canonical_id, 'ESCALATION_RESOLVED', run_id, root=root)
     mark_approval_consumed(reference, 'ESCALATION_RESOLVED', run_id, root=root)
+    comment_url = verification.get('comment_url', reference)
+    if comment_url != reference:
+        mark_approval_consumed(comment_url, 'ESCALATION_RESOLVED', run_id, root=root)
     phase=state['escalation']['from']
     state['phase']=phase
     state['approvals']['ESCALATION_RESOLVED'] = {

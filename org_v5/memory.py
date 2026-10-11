@@ -18,7 +18,42 @@ SENSITIVE=[r'AKIA[0-9A-Z]{16}',r'ghp_[A-Za-z0-9]{20,}',r'-----BEGIN .*PRIVATE KE
   r'(?i)(api[_-]?key|secret|token|password|senha)\s*[:=]\s*\S+']
 TYPES={'fact','decision','learning','error','instruction','commitment','goal'}
 
+def candidate_digest(candidate: dict, project: str = 'projeto-teste') -> str:
+    """
+    Computes canonical SHA-256 digest of the entire memory candidate,
+    binding id, role, type, text, tags, confidence, provenance, source_ref, reason, and project.
+    """
+    payload = {
+        'id': str(candidate.get('id', '')),
+        'role': str(candidate.get('role', '')),
+        'type': str(candidate.get('type', '')),
+        'text': str(candidate.get('text', '')),
+        'tags': sorted(candidate.get('tags', [])),
+        'confidence': float(candidate.get('confidence', 0.0)),
+        'provenance': str(candidate.get('provenance', '')),
+        'source_ref': str(candidate.get('source_ref', '')),
+        'reason': str(candidate.get('reason', '')),
+        'project': project
+    }
+    canonical_json = json.dumps(payload, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+    return hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()
+
+_PROMOTION_WRITE_AUTHORIZED = False
+
+class _AuthorizedMemoryWriteContext:
+    def __enter__(self):
+        global _PROMOTION_WRITE_AUTHORIZED
+        _PROMOTION_WRITE_AUTHORIZED = True
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        global _PROMOTION_WRITE_AUTHORIZED
+        _PROMOTION_WRITE_AUTHORIZED = False
+
 def ai_memory_cli(args: list[str], timeout: int = 15) -> str:
+    # Intercept direct write attempts outside authorized promote() workflow
+    if args and args[0] in ('write-page', 'create-page', 'update-page', 'delete-page', 'write'):
+        if not _PROMOTION_WRITE_AUTHORIZED:
+            raise WorkflowError(f"Direct write via CLI/MCP forbidden: '{args[0]}' requires human approval and promotion via memory.promote()")
     binary = os.environ.get('AI_MEMORY_BIN', 'ai-memory')
     if binary == 'ai-memory':
         candidates = [
@@ -111,11 +146,13 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
     state = read(root, run_id)
     decision = state['approvals'].get('MEMORY_WRITE', {})
     if decision.get('decision') != 'APPROVE' or decision.get('reference') != approval_ref or not decision.get('verified'):
-        raise WorkflowError('human memory-write approval with exact matching reference required')
+        raise WorkflowError('human memory-write approval with exact matching reference and verified=True required')
+    if not decision.get('candidate_id'):
+        raise WorkflowError('approval missing mandatory candidate_id binding')
+    if decision.get('candidate_id') != candidate_id:
+        raise WorkflowError(f"approval is bound to candidate {decision['candidate_id']}, not {candidate_id}")
     if decision.get('promoted'):
         raise WorkflowError('approval reference already consumed for previous memory promotion; reuse prohibited')
-    if decision.get('candidate_id') and decision.get('candidate_id') != candidate_id:
-        raise WorkflowError(f"approval is bound to candidate {decision['candidate_id']}, not {candidate_id}")
         
     root_guard(root)
     safe_id(candidate_id)
@@ -126,9 +163,18 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
     if cand['status'] != 'pending':
         raise WorkflowError('candidate already processed')
         
-    cand_hash = hashlib.sha256(cand['text'].encode('utf-8')).hexdigest()
-    if decision.get('content_sha256') and decision.get('content_sha256') != cand_hash:
+    cand_digest = candidate_digest(cand)
+    cand_text_hash = hashlib.sha256(cand['text'].encode('utf-8')).hexdigest()
+    
+    expected_hash = decision.get('candidate_digest') or decision.get('sha256') or decision.get('content_sha256')
+    if not expected_hash:
+        raise WorkflowError('approval missing mandatory candidate hash or content SHA-256')
+    if decision.get('content_sha256') and decision.get('content_sha256') != cand_text_hash:
         raise WorkflowError('candidate text modified after approval: content hash mismatch')
+    if decision.get('candidate_digest') and decision.get('candidate_digest') != cand_digest:
+        raise WorkflowError('candidate full specification modified after approval: candidate digest mismatch')
+    if expected_hash not in (cand_digest, cand_text_hash):
+        raise WorkflowError('candidate modified after approval: candidate hash mismatch')
         
     status()
     
@@ -140,7 +186,8 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
     body = (
         f"# {title}\n\n"
         f"**Candidate ID:** `{cand['id']}`  \n"
-        f"**Content SHA-256:** `{cand_hash}`  \n"
+        f"**Candidate Digest:** `{cand_digest}`  \n"
+        f"**Content SHA-256:** `{cand_text_hash}`  \n"
         f"**Type:** `{cand['type']}`  \n"
         f"**Role:** `{cand['role']}`  \n"
         f"**Confidence:** `{cand['confidence']}`  \n"
@@ -167,12 +214,14 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
     for tag in cand.get('tags', []):
         cmd.extend(['--tag', tag])
         
-    out = ai_memory_cli(cmd)
+    with _AuthorizedMemoryWriteContext():
+        out = ai_memory_cli(cmd)
     if not out.strip() or 'wrote' not in out.lower():
         raise WorkflowError('AI Memory returned no storage receipt; do not claim persistence')
         
     cand['status'] = 'stored'
-    cand['content_sha256'] = cand_hash
+    cand['content_sha256'] = cand_text_hash
+    cand['candidate_digest'] = cand_digest
     cand['receipt'] = out[:1000]
     cand['stored_at'] = stamp()
     cand['page_path'] = page_rel_path

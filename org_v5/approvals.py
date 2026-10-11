@@ -7,33 +7,58 @@ from datetime import datetime, timezone
 
 def stamp(): return datetime.now(timezone.utc).isoformat()
 
+_TRUSTED_GITHUB_TOKEN: str | None = None
+
+def set_trusted_github_token(token: str | None):
+    global _TRUSTED_GITHUB_TOKEN
+    _TRUSTED_GITHUB_TOKEN = token
+
+def get_trusted_github_token() -> str | None:
+    return _TRUSTED_GITHUB_TOKEN or os.environ.get('GITHUB_TOKEN')
+
 def get_consumed_approvals_path(root: Path = None) -> Path:
     base = root if root else Path('.')
     return base / '.agents' / 'state' / 'consumed_approvals.json'
 
-def is_approval_consumed(reference: str, root: Path = None) -> bool:
+def is_approval_consumed(reference_or_canonical: str, root: Path = None) -> bool:
     path = get_consumed_approvals_path(root)
     if not path.exists():
         return False
     try:
-        data = json.loads(path.read_text(encoding='utf-8'))
-        return reference in data
-    except Exception:
-        return False
+        content = path.read_text(encoding='utf-8')
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            raise ValueError("Anti-replay store corrupted: root must be a dictionary")
+        return reference_or_canonical in data
+    except Exception as e:
+        from .control import WorkflowError
+        raise WorkflowError(f"Anti-replay registry read failure (fail-closed): {e}")
 
-def mark_approval_consumed(reference: str, target: str, run_id: str, root: Path = None):
-    path = get_consumed_approvals_path(root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data = {}
-    if path.exists():
+import threading
+_REGISTRY_LOCK = threading.Lock()
+
+def mark_approval_consumed(reference_or_canonical: str, target: str, run_id: str, root: Path = None):
+    with _REGISTRY_LOCK:
+        path = get_consumed_approvals_path(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = {}
+        if path.exists():
+            try:
+                content = path.read_text(encoding='utf-8')
+                data = json.loads(content)
+                if not isinstance(data, dict):
+                    raise ValueError("Anti-replay store corrupted: root must be a dictionary")
+            except Exception as e:
+                from .control import WorkflowError
+                raise WorkflowError(f"Anti-replay registry corruption on write (fail-closed): {e}")
+        data[reference_or_canonical] = {'target': target, 'run_id': run_id, 'consumed_at': stamp()}
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.{os.urandom(8).hex()}.tmp")
         try:
-            data = json.loads(path.read_text(encoding='utf-8'))
-        except Exception:
-            data = {}
-    data[reference] = {'target': target, 'run_id': run_id, 'consumed_at': stamp()}
-    tmp = path.with_suffix('.tmp')
-    tmp.write_text(json.dumps(data, indent=2), encoding='utf-8')
-    os.replace(tmp, path)
+            tmp.write_text(json.dumps(data, indent=2), encoding='utf-8')
+            os.replace(tmp, path)
+        except Exception as e:
+            from .control import WorkflowError
+            raise WorkflowError(f"Anti-replay registry write failure (fail-closed): {e}")
 
 def verify_human_approval(
     reference: str, 
@@ -46,12 +71,12 @@ def verify_human_approval(
     """
     Validates a human approval by querying the GitHub API.
     Fails closed if it cannot verify.
-    Enforces repository identity, authorized approvers, target run/gate, and anti-replay.
+    Enforces repository identity, authorized approvers, target run/gate, exact hash, and canonical anti-replay.
     """
     if not isinstance(reference, str) or not reference.startswith('https://github.com/'):
         return {'status': 'PENDING_HUMAN', 'reason': 'Invalid reference URL: must be an https://github.com/ URL'}
         
-    # Anti-replay check
+    # Anti-replay check on input reference
     if is_approval_consumed(reference, root):
         return {'status': 'PENDING_HUMAN', 'reason': f'Approval replay detected: reference already consumed ({reference})'}
         
@@ -66,8 +91,14 @@ def verify_human_approval(
             'status': 'PENDING_HUMAN', 
             'reason': f"Cross-repository approval rejected: expected {authorized_repo}, got {owner}/{repo}"
         }
+
+    # If reference contains a comment ID, check canonical key anti-replay early
+    if comment_id:
+        canonical_key = f"{owner.lower()}/{repo.lower()}#issuecomment-{comment_id}"
+        if is_approval_consumed(canonical_key, root):
+            return {'status': 'PENDING_HUMAN', 'reason': f'Approval replay detected: canonical comment already consumed ({canonical_key})'}
         
-    token = os.environ.get('GITHUB_TOKEN')
+    token = get_trusted_github_token()
     if not token:
         return {'status': 'PENDING_HUMAN', 'reason': 'GITHUB_TOKEN not provided, cannot verify.'}
         
@@ -85,7 +116,13 @@ def verify_human_approval(
             comments = json.loads(response.read().decode('utf-8'))
             
             for comment in comments:
-                if comment_id and str(comment.get('id')) != str(comment_id):
+                cid = str(comment.get('id', ''))
+                canonical_comment_id = f"{owner.lower()}/{repo.lower()}#issuecomment-{cid}"
+
+                if is_approval_consumed(canonical_comment_id, root):
+                    continue
+
+                if comment_id and cid != str(comment_id):
                     continue
                     
                 body = comment.get('body', '')
@@ -110,11 +147,13 @@ def verify_human_approval(
                 if expected_sha and (f"SHA: {expected_sha}" not in body and f"HASH: {expected_sha}" not in body and f"COMMIT: {expected_sha}" not in body):
                     continue
                     
-                if expected_candidate_id and f"CANDIDATE: {expected_candidate_id}" not in body:
+                if expected_candidate_id and (f"CANDIDATE: {expected_candidate_id}" not in body and f"CANDIDATE_ID: {expected_candidate_id}" not in body):
                     continue
                     
                 cand_match = re.search(r'CANDIDATE(?:_ID)?:\s*([A-Za-z0-9_-]+)', body)
                 content_sha_match = re.search(r'CONTENT_SHA(?:256)?:\s*([a-fA-F0-9]{64})', body)
+                candidate_digest_match = re.search(r'CANDIDATE_DIGEST:\s*([a-fA-F0-9]{64})', body)
+                sha_match = re.search(r'(?:SHA|HASH|COMMIT)(?:_256)?:\s*([a-fA-F0-9]{32,64})', body)
                 
                 return {
                     'status': 'APPROVED',
@@ -122,11 +161,18 @@ def verify_human_approval(
                     'author_association': author_assoc,
                     'verified_at': stamp(),
                     'comment_url': comment.get('html_url', reference),
+                    'comment_id': cid,
+                    'canonical_id': canonical_comment_id,
+                    'sha256': sha_match.group(1) if sha_match else None,
                     'candidate_id': cand_match.group(1) if cand_match else None,
-                    'content_sha256': content_sha_match.group(1) if content_sha_match else None
+                    'content_sha256': content_sha_match.group(1) if content_sha_match else None,
+                    'candidate_digest': candidate_digest_match.group(1) if candidate_digest_match else None
                 }
                 
             return {'status': 'PENDING_HUMAN', 'reason': f'No matching valid approval comment found for target {expected_target} in run {expected_run_id}'}
             
     except Exception as e:
+        from .control import WorkflowError
+        if isinstance(e, WorkflowError):
+            raise
         return {'status': 'PENDING_HUMAN', 'reason': f'GitHub API check failed: {str(e)}'}
