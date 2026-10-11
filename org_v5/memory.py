@@ -6,11 +6,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import hashlib
 import subprocess
 import urllib.request
 import urllib.error
 from pathlib import Path
-from .control import read, run_dir, stamp, write_atomic, WorkflowError, safe_id, root_guard
+from .control import read, run_dir, stamp, write_atomic, WorkflowError, safe_id, root_guard, save
 
 SENSITIVE=[r'AKIA[0-9A-Z]{16}',r'ghp_[A-Za-z0-9]{20,}',r'-----BEGIN .*PRIVATE KEY-----',
   r'[\w.\-+]+@[\w.\-]+\.[A-Za-z]{2,}',r'\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b',
@@ -36,14 +37,10 @@ def ai_memory_cli(args: list[str], timeout: int = 15) -> str:
         raise WorkflowError('AI Memory CLI failed: ' + (res.stderr or res.stdout)[:300])
     return res.stdout
 
-def memanto(args: list[str], timeout: int = 15) -> str:
-    """Wrapper function preserving mock compatibility with governance tests."""
-    return ai_memory_cli(args, timeout)
-
 def status() -> dict:
     url = os.environ.get('AI_MEMORY_SERVER_URL', 'http://127.0.0.1:49374')
     try:
-        output = memanto(['status'], timeout=5)
+        output = ai_memory_cli(['status'], timeout=5)
     except Exception as exc:
         raise WorkflowError('AI Memory server is offline or unreachable; writes and recall disabled') from exc
     if any(k in output.lower() for k in ('server unreachable', 'could not reach', 'refused', 'cloud', 'not configured')):
@@ -61,7 +58,7 @@ def brief(role: str, topic: str, limit: int = 5, project: str = 'projeto-teste')
     status()
     try:
         cmd = ['search', topic or role, '--limit', str(limit), '--json', '--workspace', 'default', '--project', project]
-        out = memanto(cmd)
+        out = ai_memory_cli(cmd)
         lines = [l for l in out.strip().splitlines() if not l.startswith('202')]
         hits = json.loads('\n'.join(lines)) if lines else []
     except Exception as exc:
@@ -113,8 +110,13 @@ def propose(root: Path, run_id: str, proposal: dict) -> dict:
 def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> dict:
     state = read(root, run_id)
     decision = state['approvals'].get('MEMORY_WRITE', {})
-    if decision.get('decision') != 'APPROVE' or decision.get('reference') != approval_ref:
+    if decision.get('decision') != 'APPROVE' or decision.get('reference') != approval_ref or not decision.get('verified'):
         raise WorkflowError('human memory-write approval with exact matching reference required')
+    if decision.get('promoted'):
+        raise WorkflowError('approval reference already consumed for previous memory promotion; reuse prohibited')
+    if decision.get('candidate_id') and decision.get('candidate_id') != candidate_id:
+        raise WorkflowError(f"approval is bound to candidate {decision['candidate_id']}, not {candidate_id}")
+        
     root_guard(root)
     safe_id(candidate_id)
     path = run_dir(root, run_id) / 'memory-candidates' / f'{candidate_id}.json'
@@ -123,6 +125,11 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
     cand = json.loads(path.read_text(encoding='utf-8'))
     if cand['status'] != 'pending':
         raise WorkflowError('candidate already processed')
+        
+    cand_hash = hashlib.sha256(cand['text'].encode('utf-8')).hexdigest()
+    if decision.get('content_sha256') and decision.get('content_sha256') != cand_hash:
+        raise WorkflowError('candidate text modified after approval: content hash mismatch')
+        
     status()
     
     # Store directly into AI Memory wiki page
@@ -133,6 +140,7 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
     body = (
         f"# {title}\n\n"
         f"**Candidate ID:** `{cand['id']}`  \n"
+        f"**Content SHA-256:** `{cand_hash}`  \n"
         f"**Type:** `{cand['type']}`  \n"
         f"**Role:** `{cand['role']}`  \n"
         f"**Confidence:** `{cand['confidence']}`  \n"
@@ -164,8 +172,14 @@ def promote(root: Path, run_id: str, candidate_id: str, approval_ref: str) -> di
         raise WorkflowError('AI Memory returned no storage receipt; do not claim persistence')
         
     cand['status'] = 'stored'
+    cand['content_sha256'] = cand_hash
     cand['receipt'] = out[:1000]
     cand['stored_at'] = stamp()
     cand['page_path'] = page_rel_path
     write_atomic(path, cand)
+    
+    decision['promoted'] = True
+    decision['promoted_candidate_id'] = candidate_id
+    save(root, state)
+    
     return {'candidate': candidate_id, 'status': 'stored', 'receipt': out[:1000], 'page_path': page_rel_path}

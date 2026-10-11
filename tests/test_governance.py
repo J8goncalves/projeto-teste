@@ -3,11 +3,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from org_v5 import control, memory
+from org_v5.identity import set_actor_context, clear_actor_context
 from org_v5.contracts import validate, digest
 
 class GovernanceTests(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
+  self.addCleanup(clear_actor_context)
   self.root=Path(self.tmp.name);control.init(self.root,'RUN-TEST','test',2)
  def doc(self,kind='intake',role='orchestrator',aid='A001',inputs=None):
   from org_v5.contracts import CONTRACTS
@@ -50,7 +52,9 @@ class GovernanceTests(unittest.TestCase):
   self.seed_build_dependencies()
   # For the evidence-specific test, prepare a legitimate build predecessor.
   build=self.doc('build','developer',aid='A006',inputs=['A005'])
+  set_actor_context('agent-dev', 'developer', 'test-secret')
   control.submit(self.root,'RUN-TEST',build)
+  set_actor_context('agent-qa', 'qa', 'test-secret')
   control.review(self.root,'RUN-TEST','A006','qa','ACCEPT','reviewed')
   d=self.doc('qa-report','qa',aid='A007',inputs=['A006'])
   d['verdict']='PASS';d['sections']['method']='browser-interactive'
@@ -78,10 +82,10 @@ class GovernanceTests(unittest.TestCase):
   (self.root/'.agents/state/STOP').write_text('stop')
   with self.assertRaises(control.WorkflowError):control.submit(self.root,'RUN-TEST',self.doc())
  def test_memory_does_not_fake_success(self):
-  with patch('org_v5.memory.memanto',return_value='Backend: cloud'):
+  with patch('org_v5.memory.ai_memory_cli',return_value='Backend: cloud'):
    with self.assertRaises(control.WorkflowError):memory.status()
  def test_memory_offline_denied(self):
-  with patch('org_v5.memory.memanto',side_effect=control.WorkflowError('offline')):
+  with patch('org_v5.memory.ai_memory_cli',side_effect=control.WorkflowError('offline')):
    with self.assertRaises(control.WorkflowError):memory.brief('qa','tests')
  def test_no_promote_without_human_approval(self):
   proposal=dict(id='MC001',role='qa',type='learning',text='Run browser interaction tests and attach a durable trace for each acceptance criterion.',tags=['evid-001','qa'],confidence=.8,provenance='observed',source_ref='docs/evidence.md',reason='reusable')

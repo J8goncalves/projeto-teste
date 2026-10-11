@@ -30,6 +30,7 @@ MODES = {
     }
 }
 HUMAN_STATES={'BUILD','RELEASE','CLOSED'}
+CRITICAL_KINDS={'build','qa-report','security-report','implementation-review','release'}
 INPUT_REQUIREMENTS={
  'intake':set(),
  'market-research':{'intake'},'customer-research':{'intake'},
@@ -169,20 +170,18 @@ def review(root:Path,run_id:str,artifact_id:str,reviewer:str,verdict:str,reason:
     meta=state['artifacts'].get(artifact_id)
     if not meta: raise WorkflowError('unknown artifact')
     
-    # Identity Verification
-    reviewer_identity = verify_actor_identity(reviewer)
-    producer_identity = meta.get('producer_identity', {'assurance': 'UNVERIFIED'})
-    
-    if reviewer_identity['assurance'] == 'UNVERIFIED':
-        # Cannot fully trust the reviewer without runner context
-        pass
-    else:
-        if not verify_independence(producer_identity, reviewer_identity):
-            raise WorkflowError('independent reviewer required; same agent instance cannot review its own artifact')
-            
     if reviewer not in ROLES or reviewer==meta['role'] or reviewer=='orchestrator' or reviewer not in REVIEWERS.get(meta['kind'],set()):
         raise WorkflowError('independent reviewer required; no producer or orchestrator self-approval')
     
+    # Identity & Independence Verification
+    reviewer_identity = verify_actor_identity(reviewer)
+    producer_identity = meta.get('producer_identity', {'assurance': 'UNVERIFIED'})
+    
+    prod_id = producer_identity.get('agent_id')
+    rev_id = reviewer_identity.get('agent_id')
+    if prod_id and rev_id and prod_id == rev_id:
+        raise WorkflowError('independent reviewer required; same agent instance cannot review its own artifact')
+        
     doc = load(root/meta['path'])
     validate_proof(root, doc)
     
@@ -195,6 +194,9 @@ def review(root:Path,run_id:str,artifact_id:str,reviewer:str,verdict:str,reason:
     if verdict=='ACCEPT':
         if doc.get('verdict') in ('FAIL','BLOCKED','NOT_RUN'):
             raise WorkflowError('cannot accept unsuccessful verification')
+        if meta['kind'] in CRITICAL_KINDS:
+            if reviewer_identity.get('assurance') != 'VERIFIED' or not verify_independence(producer_identity, reviewer_identity):
+                raise WorkflowError(f"critical gate '{meta['kind']}' requires verified independent reviewer; unverified reviewer cannot ACCEPT")
         state['accepted'][artifact_id]={'reviewer':reviewer,'at':stamp(),'reason':reason,'sha256':meta['sha256'], 'reviewer_identity': reviewer_identity}
     else:
         state['accepted'].pop(artifact_id,None)
@@ -209,12 +211,17 @@ def review(root:Path,run_id:str,artifact_id:str,reviewer:str,verdict:str,reason:
 
 def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:str):
     state=read(root,run_id)
-    if target not in HUMAN_STATES and target!='MEMORY_WRITE':
+    if target not in HUMAN_STATES and target!='MEMORY_WRITE' and target!='ESCALATION_RESOLVED':
         raise WorkflowError('target is not a human-approval gate')
     if actor!='human' or decision not in ('APPROVE','DENY'):
         raise WorkflowError('human actor, valid decision required')
         
-    verification = verify_human_approval(reference, target, run_id)
+    # Check if this reference was already used for another gate in this run
+    for existing_target, app in state.get('approvals', {}).items():
+        if existing_target != target and app.get('reference') == reference:
+            raise WorkflowError(f"replay error: approval reference already used for gate {existing_target}")
+            
+    verification = verify_human_approval(reference, target, run_id, root=root)
     
     if verification['status'] == 'PENDING_HUMAN':
         state['approvals'][target]={'actor':actor,'decision':'PENDING_HUMAN','reference':reference,'at':stamp(), 'reason': verification.get('reason')}
@@ -222,7 +229,22 @@ def approval(root:Path,run_id:str,target:str,decision:str,actor:str,reference:st
         save(root,state)
         raise WorkflowError(f"APPROVAL_PENDING: {verification.get('reason')}")
         
-    state['approvals'][target]={'actor':verification['actor'],'decision':decision,'reference':reference,'at':stamp(), 'verified': True}
+    from .approvals import mark_approval_consumed
+    comment_url = verification.get('comment_url', reference)
+    mark_approval_consumed(reference, target, run_id, root=root)
+    if comment_url != reference:
+        mark_approval_consumed(comment_url, target, run_id, root=root)
+        
+    state['approvals'][target]={
+        'actor':verification['actor'],
+        'decision':decision,
+        'reference':reference,
+        'comment_url': comment_url,
+        'at':stamp(),
+        'verified': True,
+        'candidate_id': verification.get('candidate_id'),
+        'content_sha256': verification.get('content_sha256')
+    }
     state['history'].append({'at':stamp(),'action':'human_decision','target':target,'decision':decision,'reference':reference})
     save(root,state)
 
@@ -259,10 +281,26 @@ def escalate(root:Path,run_id:str,reason:str):
 
 def resume(root:Path,run_id:str,reference:str):
     state=read(root,run_id)
-    if state['phase']!='ESCALATED' or not reference.startswith('https://github.com/'):
+    if state['phase']!='ESCALATED':
+        raise WorkflowError('run is not in ESCALATED phase')
+    if not isinstance(reference, str) or not reference.startswith('https://github.com/'):
         raise WorkflowError('human resolution with GitHub reference needed')
+        
+    verification = verify_human_approval(reference, 'ESCALATION_RESOLVED', run_id, root=root)
+    if verification.get('status') != 'APPROVED':
+        raise WorkflowError(f"ESCALATION_RESUME_DENIED: {verification.get('reason', 'unverified reference')}")
+        
+    from .approvals import mark_approval_consumed
+    mark_approval_consumed(reference, 'ESCALATION_RESOLVED', run_id, root=root)
     phase=state['escalation']['from']
     state['phase']=phase
+    state['approvals']['ESCALATION_RESOLVED'] = {
+        'actor': verification['actor'],
+        'decision': 'APPROVE',
+        'reference': reference,
+        'at': stamp(),
+        'verified': True
+    }
     state['history'].append({'at':stamp(),'action':'resume','reference':reference,'to':phase})
     save(root,state)
 

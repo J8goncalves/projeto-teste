@@ -6,6 +6,7 @@ import shutil
 import json
 
 from org_v5 import control, cli
+from org_v5.identity import set_actor_context, clear_actor_context
 from org_v5.contracts import validate, load, digest
 
 class V51GovernanceTests(unittest.TestCase):
@@ -16,14 +17,13 @@ class V51GovernanceTests(unittest.TestCase):
         self.root.mkdir(parents=True)
         control.init(self.root, 'RUN-TEST', 'Test V5.1', 3, 'ENGINEERING_SMALL')
         # Setup mock environment
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-123'
-        os.environ['AGY_ASSIGNED_ROLE'] = 'orchestrator'
+        self.secret = 'test-runner-secret'
+        set_actor_context('agent-123', 'orchestrator', self.secret)
         
     def tearDown(self):
         if self.root.exists():
             shutil.rmtree(self.root)
-        if 'AGY_AGENT_INSTANCE_ID' in os.environ: del os.environ['AGY_AGENT_INSTANCE_ID']
-        if 'AGY_ASSIGNED_ROLE' in os.environ: del os.environ['AGY_ASSIGNED_ROLE']
+        clear_actor_context()
         
     def doc(self, kind='intake', role='orchestrator', aid='A001', inputs=None):
         from org_v5.contracts import CONTRACTS
@@ -34,37 +34,30 @@ class V51GovernanceTests(unittest.TestCase):
                     
     def seed_build_dependencies(self):
         # Use real submissions and independent reviewers to seed an accepted chain.
-        os.environ['AGY_ASSIGNED_ROLE'] = 'orchestrator'
+        set_actor_context('agent-123', 'orchestrator', self.secret)
         upstream=self.doc('intake','orchestrator',aid='A001')
         control.submit(self.root,'RUN-TEST',upstream)
-        os.environ['AGY_ASSIGNED_ROLE'] = 'critical-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-2'
+        set_actor_context('agent-2', 'critical-reviewer', self.secret)
         control.review(self.root,'RUN-TEST','A001','critical-reviewer','ACCEPT','reviewed')
         
-        os.environ['AGY_ASSIGNED_ROLE'] = 'product-manager'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-pm'
+        set_actor_context('agent-pm', 'product-manager', self.secret)
         prd=self.doc('prd','product-manager',aid='A004',inputs=['A001'])
         prd['sections']['stories']=[{'id':'US-1','as_a':'buyer','i_want':'add item','so_that':'save','acceptance_ids':['AC-1']}]
         prd['sections']['acceptance_criteria']=[{'id':'AC-1','given':'open','when':'click','then':'saved'}]
         control.submit(self.root,'RUN-TEST',prd)
-        os.environ['AGY_ASSIGNED_ROLE'] = 'qa'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-qa'
+        set_actor_context('agent-qa', 'qa', self.secret)
         control.review(self.root,'RUN-TEST','A004','qa','ACCEPT','reviewed')
         
-        os.environ['AGY_ASSIGNED_ROLE'] = 'architect'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-arch'
+        set_actor_context('agent-arch', 'architect', self.secret)
         adr=self.doc('architecture','architect',aid='A005',inputs=['A004'])
         control.submit(self.root,'RUN-TEST',adr)
-        os.environ['AGY_ASSIGNED_ROLE'] = 'security-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-sec'
+        set_actor_context('agent-sec', 'security-reviewer', self.secret)
         control.review(self.root,'RUN-TEST','A005','security-reviewer','ACCEPT','reviewed')
         
-        os.environ['AGY_ASSIGNED_ROLE'] = 'developer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-dev'
+        set_actor_context('agent-dev', 'developer', self.secret)
         build = self.doc('build', 'developer', aid='B001', inputs=['A005'])
         control.submit(self.root, 'RUN-TEST', build)
-        os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-ir'
+        set_actor_context('agent-ir', 'implementation-reviewer', self.secret)
         control.review(self.root, 'RUN-TEST', 'B001', 'implementation-reviewer', 'ACCEPT', 'reviewed')
         return 'B001'
 
@@ -88,31 +81,26 @@ class V51GovernanceTests(unittest.TestCase):
         # Release Manager tenta fundir QA de B001 com Sec de B002
         b1 = self.seed_build_dependencies()
         
-        os.environ['AGY_ASSIGNED_ROLE'] = 'developer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-dev2'
+        set_actor_context('agent-dev2', 'developer', self.secret)
         b2 = self.doc('build', 'developer', aid='B002', inputs=['A005'])
         control.submit(self.root, 'RUN-TEST', b2)
-        os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-ir2'
+        set_actor_context('agent-ir2', 'implementation-reviewer', self.secret)
         control.review(self.root, 'RUN-TEST', 'B002', 'implementation-reviewer', 'ACCEPT', 'reviewed')
         
         # Sec reviews B002
         import hashlib
-        os.environ['AGY_ASSIGNED_ROLE'] = 'security-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-sec2'
+        set_actor_context('agent-sec2', 'security-reviewer', self.secret)
         s = self.doc('security-report', 'security-reviewer', aid='S002', inputs=['B002'])
         s['verdict'] = 'PASS'
         (self.root / 's').write_bytes(b'scan output')
         s['execution'] = {'real_execution': True, 'command': 'x', 'exit_code': 0, 'output_ref': 's', 'output_sha256': hashlib.sha256(b'scan output').hexdigest(), 'tool':'x', 'version':'1', 'started_at':'1', 'finished_at':'1', 'environment':'1', 'commit_sha':'1'}
         s['sections']['scans'] = ['scan']
         control.submit(self.root, 'RUN-TEST', s)
-        os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-ir3'
+        set_actor_context('agent-ir3', 'implementation-reviewer', self.secret)
         control.review(self.root, 'RUN-TEST', 'S002', 'implementation-reviewer', 'ACCEPT', 'reviewed')
         
         # QA reviews B001
-        os.environ['AGY_ASSIGNED_ROLE'] = 'qa'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-qa2'
+        set_actor_context('agent-qa2', 'qa', self.secret)
         q = self.doc('qa-report', 'qa', aid='Q001', inputs=[b1])
         q['verdict'] = 'PASS'
         (self.root / 'q').write_bytes(b'qa output')
@@ -125,22 +113,18 @@ class V51GovernanceTests(unittest.TestCase):
         (self.root / 'docs/evidence.md').write_text('evidence')
         
         control.submit(self.root, 'RUN-TEST', q)
-        os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-ir4'
+        set_actor_context('agent-ir4', 'implementation-reviewer', self.secret)
         control.review(self.root, 'RUN-TEST', 'Q001', 'implementation-reviewer', 'ACCEPT', 'reviewed')
         
         # IR for B002
-        os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-ir5'
+        set_actor_context('agent-ir5', 'implementation-reviewer', self.secret)
         ir = self.doc('implementation-review', 'implementation-reviewer', aid='IR001', inputs=['Q001', 'S002'])
         control.submit(self.root, 'RUN-TEST', ir)
-        os.environ['AGY_ASSIGNED_ROLE'] = 'critical-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-cr1'
+        set_actor_context('agent-cr1', 'critical-reviewer', self.secret)
         control.review(self.root, 'RUN-TEST', 'IR001', 'critical-reviewer', 'ACCEPT', 'reviewed')
         
         # Release manager tries to submit
-        os.environ['AGY_ASSIGNED_ROLE'] = 'release-manager'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-rm'
+        set_actor_context('agent-rm', 'release-manager', self.secret)
         rm = self.doc('release', 'release-manager', aid='RM001', inputs=['Q001', 'S002', 'IR001'])
         
         with self.assertRaises(control.WorkflowError) as ctx:
@@ -196,7 +180,7 @@ class V51GovernanceTests(unittest.TestCase):
         os.environ['GITHUB_TOKEN'] = 'fake_token'
         mock_urlopen.side_effect = Exception("API Error")
         with self.assertRaises(control.WorkflowError) as ctx:
-            control.approval(self.root, 'RUN-TEST', 'BUILD', 'APPROVE', 'human', 'https://github.com/foo/bar/issues/1')
+            control.approval(self.root, 'RUN-TEST', 'BUILD', 'APPROVE', 'human', 'https://github.com/J8goncalves/projeto-teste/issues/1')
         self.assertIn("APPROVAL_PENDING: GitHub API check failed: API Error", str(ctx.exception))
         
 
@@ -217,8 +201,7 @@ class V51GovernanceTests(unittest.TestCase):
 
     def test_T19_evidence_tampering_denied(self):
         b1 = self.seed_build_dependencies()
-        os.environ['AGY_ASSIGNED_ROLE'] = 'security-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-sec3'
+        set_actor_context('agent-sec3', 'security-reviewer', self.secret)
         s = self.doc('security-report', 'security-reviewer', aid='S003', inputs=[b1])
         s['verdict'] = 'PASS'
         (self.root / 's3').write_bytes(b'scan output')
@@ -226,8 +209,7 @@ class V51GovernanceTests(unittest.TestCase):
         s['sections']['scans'] = ['scan']
         control.submit(self.root, 'RUN-TEST', s)
         (self.root / 's3').write_bytes(b'hacked scan output')
-        os.environ['AGY_ASSIGNED_ROLE'] = 'implementation-reviewer'
-        os.environ['AGY_AGENT_INSTANCE_ID'] = 'agent-ir6'
+        set_actor_context('agent-ir6', 'implementation-reviewer', self.secret)
         with self.assertRaises(Exception) as ctx:
             control.review(self.root, 'RUN-TEST', 'S003', 'implementation-reviewer', 'ACCEPT', 'reviewed')
         self.assertIn('execution output SHA-256 absent/mismatch', str(ctx.exception))

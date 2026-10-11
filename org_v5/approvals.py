@@ -2,60 +2,131 @@ import os
 import re
 import urllib.request
 import json
+from pathlib import Path
 from datetime import datetime, timezone
 
 def stamp(): return datetime.now(timezone.utc).isoformat()
 
-def verify_human_approval(reference: str, expected_target: str, expected_run_id: str, expected_sha: str = None) -> dict:
+def get_consumed_approvals_path(root: Path = None) -> Path:
+    base = root if root else Path('.')
+    return base / '.agents' / 'state' / 'consumed_approvals.json'
+
+def is_approval_consumed(reference: str, root: Path = None) -> bool:
+    path = get_consumed_approvals_path(root)
+    if not path.exists():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+        return reference in data
+    except Exception:
+        return False
+
+def mark_approval_consumed(reference: str, target: str, run_id: str, root: Path = None):
+    path = get_consumed_approvals_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = {}
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+        except Exception:
+            data = {}
+    data[reference] = {'target': target, 'run_id': run_id, 'consumed_at': stamp()}
+    tmp = path.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2), encoding='utf-8')
+    os.replace(tmp, path)
+
+def verify_human_approval(
+    reference: str, 
+    expected_target: str, 
+    expected_run_id: str, 
+    expected_sha: str = None,
+    expected_candidate_id: str = None,
+    root: Path = None
+) -> dict:
     """
     Validates a human approval by querying the GitHub API.
     Fails closed if it cannot verify.
+    Enforces repository identity, authorized approvers, target run/gate, and anti-replay.
     """
-    if not reference.startswith('https://github.com/'):
-        raise ValueError("Invalid reference URL: must be a GitHub URL")
+    if not isinstance(reference, str) or not reference.startswith('https://github.com/'):
+        return {'status': 'PENDING_HUMAN', 'reason': 'Invalid reference URL: must be an https://github.com/ URL'}
+        
+    # Anti-replay check
+    if is_approval_consumed(reference, root):
+        return {'status': 'PENDING_HUMAN', 'reason': f'Approval replay detected: reference already consumed ({reference})'}
+        
+    match = re.match(r'https://github\.com/([^/]+)/([^/]+)/(issues|pull)/(\d+)(?:#issuecomment-(\d+))?', reference)
+    if not match:
+        return {'status': 'PENDING_HUMAN', 'reason': 'Unrecognized GitHub URL format.'}
+        
+    owner, repo, type_, number, comment_id = match.groups()
+    authorized_repo = os.environ.get('AUTHORIZED_GITHUB_REPO', 'J8goncalves/projeto-teste')
+    if f"{owner}/{repo}".lower() != authorized_repo.lower():
+        return {
+            'status': 'PENDING_HUMAN', 
+            'reason': f"Cross-repository approval rejected: expected {authorized_repo}, got {owner}/{repo}"
+        }
         
     token = os.environ.get('GITHUB_TOKEN')
     if not token:
         return {'status': 'PENDING_HUMAN', 'reason': 'GITHUB_TOKEN not provided, cannot verify.'}
         
-    # Extract API URL (e.g., https://github.com/owner/repo/issues/1 -> https://api.github.com/repos/owner/repo/issues/1/comments)
-    # This is simplified for the sake of the pilot.
-    match = re.match(r'https://github\.com/([^/]+)/([^/]+)/(issues|pull)/(\d+)', reference)
-    if not match:
-        return {'status': 'PENDING_HUMAN', 'reason': 'Unrecognized GitHub URL format.'}
-        
-    owner, repo, type_, number = match.groups()
     api_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}/comments"
-    
     req = urllib.request.Request(api_url, headers={
         'Authorization': f'Bearer {token}',
-        'Accept': 'application/vnd.github.v3+json'
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'OrgV5-Approvals-Verifier'
     })
+    
+    authorized_approvers = [u.strip().lower() for u in os.environ.get('AUTHORIZED_APPROVERS', 'j8goncalves').split(',') if u.strip()]
     
     try:
         with urllib.request.urlopen(req, timeout=10) as response:
             comments = json.loads(response.read().decode('utf-8'))
             
-            # Look for a comment that contains the approval payload
             for comment in comments:
-                body = comment.get('body', '')
-                author_assoc = comment.get('author_association', '')
-                if author_assoc not in ('OWNER', 'MEMBER', 'COLLABORATOR'):
+                if comment_id and str(comment.get('id')) != str(comment_id):
                     continue
                     
-                if f"APPROVE_TARGET: {expected_target}" in body and f"RUN_ID: {expected_run_id}" in body:
-                    if expected_sha and f"SHA: {expected_sha}" not in body:
-                        continue
+                body = comment.get('body', '')
+                author_login = comment.get('user', {}).get('login', '').lower()
+                author_assoc = comment.get('author_association', '')
+                
+                # Check authorized approver identity and association
+                if author_login not in authorized_approvers or author_assoc not in ('OWNER', 'MEMBER', 'COLLABORATOR'):
+                    continue
                     
-                    return {
-                        'status': 'APPROVED',
-                        'actor': comment['user']['login'],
-                        'author_association': author_assoc,
-                        'verified_at': stamp(),
-                        'comment_url': comment['html_url']
-                    }
-            
-            return {'status': 'PENDING_HUMAN', 'reason': 'No matching approval comment from authorized collaborator found.'}
+                # Check for revocation or expiration
+                if 'REVOKED' in body or 'EXPIRED' in body:
+                    continue
+                    
+                target_match = (f"APPROVE_TARGET: {expected_target}" in body) or (f"TARGET: {expected_target}" in body) or (f"GATE: {expected_target}" in body)
+                run_match = f"RUN_ID: {expected_run_id}" in body
+                decision_match = ("DECISION: APPROVE" in body) or ("APPROVE" in body)
+                
+                if not (target_match and run_match and decision_match):
+                    continue
+                    
+                if expected_sha and (f"SHA: {expected_sha}" not in body and f"HASH: {expected_sha}" not in body and f"COMMIT: {expected_sha}" not in body):
+                    continue
+                    
+                if expected_candidate_id and f"CANDIDATE: {expected_candidate_id}" not in body:
+                    continue
+                    
+                cand_match = re.search(r'CANDIDATE(?:_ID)?:\s*([A-Za-z0-9_-]+)', body)
+                content_sha_match = re.search(r'CONTENT_SHA(?:256)?:\s*([a-fA-F0-9]{64})', body)
+                
+                return {
+                    'status': 'APPROVED',
+                    'actor': comment.get('user', {}).get('login'),
+                    'author_association': author_assoc,
+                    'verified_at': stamp(),
+                    'comment_url': comment.get('html_url', reference),
+                    'candidate_id': cand_match.group(1) if cand_match else None,
+                    'content_sha256': content_sha_match.group(1) if content_sha_match else None
+                }
+                
+            return {'status': 'PENDING_HUMAN', 'reason': f'No matching valid approval comment found for target {expected_target} in run {expected_run_id}'}
             
     except Exception as e:
         return {'status': 'PENDING_HUMAN', 'reason': f'GitHub API check failed: {str(e)}'}

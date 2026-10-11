@@ -21,4 +21,22 @@ evidence/raw/
 .agents/state/
 backups/
 bin/
-*.zip
+# Local databases & wiki stores
+*.sqlite
+*.sqlite3
+*.db
+ai-memory/
+.ai-memory/
+wiki/
+
+# Secrets, credentials & tokens
+*.token
+*.credential
+*.cred
+*.secret
+*.asc
+
+# Test artifacts & caches
+tests/tmp*/
+.coverage
+htmlcov/
