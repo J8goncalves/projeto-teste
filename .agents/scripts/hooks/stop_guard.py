@@ -1,10 +1,13 @@
 import sys
 import json
 import os
+from pathlib import Path
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-workspace_root = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
-os.chdir(workspace_root)
+def resolve_workspace_root(data):
+    wp = data.get("workspacePaths", [])
+    if wp and isinstance(wp, list) and wp[0]:
+        return Path(wp[0]).resolve()
+    return Path(__file__).resolve().parents[3]
 
 def main():
     try:
@@ -15,71 +18,73 @@ def main():
     try:
         raw_input = sys.stdin.read()
         data = json.loads(raw_input) if raw_input.strip() else {}
+        workspace_root = resolve_workspace_root(data)
+        
         term_reason = data.get("terminationReason", "")
         error_msg = data.get("error", "")
         fully_idle = data.get("fullyIdle", True)
+        conv_id = data.get("conversationId", "default")
+        # Sanitize conv_id for file name
+        safe_conv = "".join(c for c in conv_id if c.isalnum() or c in ("-", "_"))[:64] or "default"
 
         # Regra 1: Se o termino foi por erro ou max_steps_exceeded, ou erro presente, sempre permitir
         if term_reason in ("error", "max_steps_exceeded") or error_msg or not fully_idle:
             print(json.dumps({"decision": "terminate", "reason": f"Termino autorizado por condicao de parada: {term_reason}"}))
             return
 
-        # Regra 2: Verificar se STOP esta ativo
-        if os.path.exists(".agents/state/STOP"):
+        # Regra 2: Se STOP estiver ativo
+        stop_file = workspace_root / ".agents" / "state" / "STOP"
+        if stop_file.exists():
             print(json.dumps({"decision": "terminate", "reason": "STOP ativo, encerramento permitido"}))
             return
 
-        # Regra 3: Limite de tentativas de continue (maximo 2)
-        state_file = ".agents/state/stop_attempts.txt"
+        # Regra 3: Limite de tentativas isolado por sessao / conversa (P1-09)
+        state_dir = workspace_root / ".agents" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        state_file = state_dir / f"stop_attempts_{safe_conv}.txt"
+        
         attempts = 0
-        if os.path.exists(state_file):
+        if state_file.exists():
             try:
-                with open(state_file, "r", encoding="utf-8") as f:
-                    attempts = int(f.read().strip())
+                attempts = int(state_file.read_text(encoding="utf-8").strip())
             except Exception:
                 attempts = 0
 
         # Verificar se ha pendencia verificavel (ex: CURRENT run tem artefato submitted sem review)
-        current_run = None
         has_verifiable_pending = False
         pending_desc = ""
-        if os.path.exists("runs/CURRENT"):
-            with open("runs/CURRENT", "r", encoding="utf-8") as f:
-                current_run = f.read().strip()
-        if current_run and os.path.exists(f"runs/{current_run}/state.json"):
+        curr_run_file = workspace_root / "runs" / "CURRENT"
+        if curr_run_file.exists():
             try:
-                with open(f"runs/{current_run}/state.json", "r", encoding="utf-8") as f:
-                    st = json.load(f)
+                run_id = curr_run_file.read_text(encoding="utf-8").strip()
+                st_file = workspace_root / "runs" / run_id / "state.json"
+                if st_file.exists():
+                    st = json.loads(st_file.read_text(encoding="utf-8"))
                     pending_reviews = st.get("pending_reviews", [])
                     if pending_reviews:
                         has_verifiable_pending = True
-                        pending_desc = f"Artefato pendente de revisao: {pending_reviews}"
+                        pending_desc = f"Artefatos pendentes de revisao: {pending_reviews}"
             except Exception:
                 pass
 
         if has_verifiable_pending and attempts < 2:
             attempts += 1
-            os.makedirs(".agents/state", exist_ok=True)
-            with open(state_file, "w", encoding="utf-8") as f:
-                f.write(str(attempts))
+            state_file.write_text(str(attempts), encoding="utf-8")
             print(json.dumps({
                 "decision": "continue",
                 "reason": f"Pendencia verificavel detectada ({pending_desc}). Tentativa {attempts}/2."
             }))
             return
 
-        # Permitir encerramento
-        if os.path.exists(state_file):
+        # Permitir encerramento e limpar estado da sessao
+        if state_file.exists():
             try:
-                os.remove(state_file)
+                state_file.unlink()
             except Exception:
                 pass
         print(json.dumps({"decision": "terminate", "reason": "Sem pendencias verificaveis ou limite atingido."}))
 
     except Exception as e:
-        os.makedirs(".agents/state", exist_ok=True)
-        with open(".agents/state/hook-errors.log", "a", encoding="utf-8") as f:
-            f.write(f"stop_guard exception: {str(e)}\n")
         print(json.dumps({"decision": "terminate", "reason": f"Erro interno stop_guard: {str(e)}"}))
 
 if __name__ == "__main__":
