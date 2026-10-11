@@ -1,0 +1,252 @@
+{
+  "schema": "AUDIT_REPORT_V5_2",
+  "run_id": "RUN-HOMOLOGA-001",
+  "goal": "Homologacao Final Fase F Organização V5.2",
+  "workflow_mode": "ENGINEERING_SMALL",
+  "execution_policy": "TURBO_SANDBOX",
+  "branch": "feature/v5.2-homologacao-fase-f",
+  "current_phase": "VERIFY",
+  "justification": "Modo de fluxo 'ENGINEERING_SMALL' selecionado para nível de risco 1. Política de execução 'TURBO_SANDBOX' vinculada à branch 'feature/v5.2-homologacao-fase-f' para governança auditável com proteção estrita de produção.",
+  "telemetry_verification": "VERIFIED_EVENTS",
+  "agents_effective": [
+    {
+      "role": "architect",
+      "instances": [
+        "inst-arch-homologa-05"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 0.058,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [
+        "ART-ARCH-001"
+      ],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    },
+    {
+      "role": "critical-reviewer",
+      "instances": [
+        "inst-crit-homologa-02"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 0.0761,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    },
+    {
+      "role": "developer",
+      "instances": [
+        "inst-dev-homologa-07"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 0.15,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [
+        "ART-BUILD-001"
+      ],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    },
+    {
+      "role": "implementation-reviewer",
+      "instances": [
+        "inst-ir-homologa-08"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 0.1521,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    },
+    {
+      "role": "memory-curator",
+      "instances": [
+        "inst-mem-homologa-09"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 11.3241,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    },
+    {
+      "role": "orchestrator",
+      "instances": [
+        "inst-orch-homologa-01"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 0.0589,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [
+        "ART-INTAKE-001"
+      ],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    },
+    {
+      "role": "product-manager",
+      "instances": [
+        "inst-pm-homologa-03"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 0.0613,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [
+        "ART-PRD-001"
+      ],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    },
+    {
+      "role": "qa",
+      "instances": [
+        "inst-qa-homologa-04"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 0.0711,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    },
+    {
+      "role": "security-reviewer",
+      "instances": [
+        "inst-sec-homologa-06"
+      ],
+      "invocations_count": 1,
+      "total_duration_seconds": 0.0611,
+      "measurement_method": "MEDIDO_WALL_CLOCK",
+      "artifacts_produced": [],
+      "assurance": "UNVERIFIED/ROLE_ONLY"
+    }
+  ],
+  "agents_declared_only": [
+    "release-manager"
+  ],
+  "agents_unnecessary": [
+    "ceo",
+    "critical-reviewer",
+    "customer-researcher",
+    "data-analytics",
+    "devops-finops",
+    "experiment-designer",
+    "legal-compliance",
+    "market-researcher",
+    "marketing-strategist",
+    "memory-curator",
+    "product-strategist"
+  ],
+  "artifacts": [
+    {
+      "id": "ART-ARCH-001",
+      "kind": "architecture",
+      "role": "architect",
+      "sha256": "518c7bd19f29ae022df1e0b5725553d1300c1f88987398071277460826e73024",
+      "status": "accepted",
+      "reviewer": "security-reviewer",
+      "reviewer_status": "UNVERIFIED/ROLE_ONLY",
+      "submitted_at": "2026-10-11T06:54:36.242584+00:00",
+      "path": "runs\\RUN-HOMOLOGA-001\\artifacts\\ART-ARCH-001.json"
+    },
+    {
+      "id": "ART-BUILD-001",
+      "kind": "build",
+      "role": "developer",
+      "sha256": "f92670a905a38dfab9962b0b4198afe2fca04b9e0ec819639132994cff0ab75d",
+      "status": "accepted",
+      "reviewer": "implementation-reviewer",
+      "reviewer_status": "SANDBOX_PROVISIONAL",
+      "submitted_at": "2026-10-11T06:54:42.644965+00:00",
+      "path": "runs\\RUN-HOMOLOGA-001\\artifacts\\ART-BUILD-001.json"
+    },
+    {
+      "id": "ART-INTAKE-001",
+      "kind": "intake",
+      "role": "orchestrator",
+      "sha256": "ece17cfbaf27808114b200865f61cceb8df00044da9deef16bdd94b4e5309f91",
+      "status": "accepted",
+      "reviewer": "critical-reviewer",
+      "reviewer_status": "UNVERIFIED/ROLE_ONLY",
+      "submitted_at": "2026-10-11T06:54:35.922631+00:00",
+      "path": "runs\\RUN-HOMOLOGA-001\\artifacts\\ART-INTAKE-001.json"
+    },
+    {
+      "id": "ART-PRD-001",
+      "kind": "prd",
+      "role": "product-manager",
+      "sha256": "92c0de01d7f8ee378e0af9e394cefceb8f8d581df4c61b8b74bae807bf66ad40",
+      "status": "accepted",
+      "reviewer": "qa",
+      "reviewer_status": "UNVERIFIED/ROLE_ONLY",
+      "submitted_at": "2026-10-11T06:54:36.090499+00:00",
+      "path": "runs\\RUN-HOMOLOGA-001\\artifacts\\ART-PRD-001.json"
+    }
+  ],
+  "handoffs_count": 7,
+  "handoffs": [
+    {
+      "from_role": "orchestrator",
+      "to_role": "critical-reviewer",
+      "at": "2026-10-11T06:54:36.000672+00:00",
+      "verdict": "ACCEPT"
+    },
+    {
+      "from_role": "critical-reviewer",
+      "to_role": "product-manager",
+      "at": "2026-10-11T06:54:36.090507+00:00",
+      "artifact": "ART-PRD-001"
+    },
+    {
+      "from_role": "product-manager",
+      "to_role": "qa",
+      "at": "2026-10-11T06:54:36.163585+00:00",
+      "verdict": "ACCEPT"
+    },
+    {
+      "from_role": "qa",
+      "to_role": "architect",
+      "at": "2026-10-11T06:54:36.242591+00:00",
+      "artifact": "ART-ARCH-001"
+    },
+    {
+      "from_role": "architect",
+      "to_role": "security-reviewer",
+      "at": "2026-10-11T06:54:36.304922+00:00",
+      "verdict": "ACCEPT"
+    },
+    {
+      "from_role": "security-reviewer",
+      "to_role": "developer",
+      "at": "2026-10-11T06:54:42.644976+00:00",
+      "artifact": "ART-BUILD-001"
+    },
+    {
+      "from_role": "developer",
+      "to_role": "implementation-reviewer",
+      "at": "2026-10-11T06:54:42.796325+00:00",
+      "verdict": "ACCEPT"
+    }
+  ],
+  "reworks_count": 0,
+  "reworks_by_pair": {},
+  "gates": {
+    "BUILD": {
+      "status": "POLICY_AUTO_APPROVED",
+      "decision": "APPROVE",
+      "actor": "policy_engine",
+      "rule": "POLICY_AUTO_APPROVED",
+      "verified": false
+    },
+    "VERIFY": {
+      "status": "NOT_REACHED"
+    },
+    "RELEASE": {
+      "status": "PENDING"
+    },
+    "CLOSED": {
+      "status": "PENDING"
+    }
+  },
+  "resource_metrics": {
+    "tokens_per_agent": "NÃO MEDIDO",
+    "cost_usd": "NÃO MEDIDO",
+    "total_measured_duration_seconds": 12.0127
+  }
+}

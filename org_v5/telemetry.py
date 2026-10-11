@@ -50,6 +50,7 @@ class InvocationTelemetryContext:
     """
     Context manager that automatically times and logs true invocation start and end events.
     Captures wall-clock duration with time.perf_counter() to eliminate manual/fictional durations.
+    Automatically sets and restores actor identity context during the invocation.
     """
     def __init__(self, root: Path, run_id: str, role: str, instance_id: str, invocation_id: str | None = None, parent_invocation_id: str | None = None):
         self.root = root
@@ -60,11 +61,17 @@ class InvocationTelemetryContext:
         self.parent_invocation_id = parent_invocation_id
         self.start_time = None
         self.artifacts = []
+        self.prev_instance_id = None
+        self.prev_role = None
 
     def add_artifact(self, artifact_id: str):
         self.artifacts.append(artifact_id)
 
     def __enter__(self):
+        from . import identity
+        self.prev_instance_id = os.environ.get('AGY_AGENT_INSTANCE_ID')
+        self.prev_role = os.environ.get('AGY_ASSIGNED_ROLE')
+        identity.set_actor_context(self.instance_id, self.role)
         self.start_time = time.perf_counter()
         log_event(self.root, self.run_id, {
             'event_type': 'invocation_start',
@@ -93,6 +100,11 @@ class InvocationTelemetryContext:
             'assurance': 'UNVERIFIED/ROLE_ONLY',
             'error': str(exc_val) if exc_val else None
         })
+        from . import identity
+        if self.prev_instance_id and self.prev_role:
+            identity.set_actor_context(self.prev_instance_id, self.prev_role)
+        else:
+            identity.clear_actor_context()
 
 def track_invocation(root: Path, run_id: str, role: str, instance_id: str, invocation_id: str | None = None):
     return InvocationTelemetryContext(root, run_id, role, instance_id, invocation_id)
