@@ -271,7 +271,7 @@ def promote_core(root: Path, run_id: str, candidate_id: str, commit_sha: str) ->
     """
     Promotes a candidate representing a proven, tested organization core improvement
     without a redundant second human approval, strictly verifying Git commit, core diff,
-    and a clean test suite execution.
+    clean test suite execution matching the exact commit, and genuine recall from memory.
     """
     root_guard(root)
     safe_id(candidate_id)
@@ -304,13 +304,26 @@ def promote_core(root: Path, run_id: str, candidate_id: str, commit_sha: str) ->
         raise WorkflowError(f"core improvement rejected: commit {commit_sha[:8]} is not reachable from current HEAD")
         
     # 4. Verify test suite execution in a controlled subprocess
-    test_cmd = [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests']
+    # Guarantees that working directory matches the exact commit tree
+    res_head = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=str(root), capture_output=True, text=True, check=False)
+    current_head = res_head.stdout.strip() if res_head.returncode == 0 else ''
+    res_status = subprocess.run(['git', 'status', '--porcelain'], cwd=str(root), capture_output=True, text=True, check=False)
+    dirty_files = [line.strip() for line in res_status.stdout.splitlines() if line.strip()]
+    if current_head != full_commit_sha and dirty_files:
+        raise WorkflowError(f"core improvement rejected: working directory has uncommitted changes diverging from commit {commit_sha[:8]}")
+        
+    from .test_runner import run_test_suite
     try:
-        test_res = subprocess.run(test_cmd, cwd=str(root), capture_output=True, text=True, timeout=60, check=False)
-    except subprocess.TimeoutExpired as exc:
-        raise WorkflowError("core improvement rejected: test suite verification timed out") from exc
-    if test_res.returncode != 0:
-        raise WorkflowError(f"core improvement rejected: test suite verification failed with exit code {test_res.returncode}:\n{(test_res.stderr or test_res.stdout)[:400]}")
+        test_details = run_test_suite('tests', cwd=root)
+    except Exception as exc:
+        raise WorkflowError(f"core improvement rejected: test runner error: {exc}") from exc
+        
+    if not test_details.get('clean_pass'):
+        raise WorkflowError(
+            f"core improvement rejected: test suite verification failed "
+            f"(passed={test_details.get('passed')}, failed={test_details.get('failed')}, "
+            f"errors={test_details.get('errors')}, skipped={test_details.get('skipped')})"
+        )
         
     # 5. Branch-bound status label
     curr_branch = get_current_git_branch(root)
@@ -371,6 +384,12 @@ def promote_core(root: Path, run_id: str, candidate_id: str, commit_sha: str) ->
         if not out.strip() or 'wrote' not in out.lower():
             raise WorkflowError('AI Memory returned no storage receipt; do not claim persistence')
             
+        # Verify genuine recall from memory service before returning verified_recall: True
+        recalled = recall(cand['id'])
+        confirmed = any(hit.get('path') == page_rel_path or cand['id'] in str(hit) for hit in recalled)
+        if not confirmed:
+            raise WorkflowError(f"AI Memory recall verification failed: page '{page_rel_path}' written but not found in recall search")
+            
         cand['status'] = 'stored'
         cand['memory_status'] = status_label
         cand['commit_sha'] = full_commit_sha
@@ -379,6 +398,7 @@ def promote_core(root: Path, run_id: str, candidate_id: str, commit_sha: str) ->
         cand['receipt'] = out[:1000]
         cand['stored_at'] = stamp()
         cand['page_path'] = page_rel_path
+        cand['verified_recall'] = True
         write_atomic(cand_path, cand)
         
         return {
@@ -468,6 +488,11 @@ def sync_pending_core(root: Path, run_id: str) -> list[dict]:
         with _AuthorizedMemoryWriteContext():
             out = ai_memory_cli(cmd)
         if 'wrote' in out.lower():
+            # Confirm recall
+            recalled = recall(cand_id)
+            confirmed = any(hit.get('path') == page_rel_path or cand_id in str(hit) for hit in recalled)
+            if not confirmed:
+                raise WorkflowError(f"AI Memory recall verification failed on sync for candidate '{cand_id}'")
             cand_path = run_dir(root, run_id) / 'memory-candidates' / f'{cand_id}.json'
             if cand_path.exists():
                 c_data = json.loads(cand_path.read_text(encoding='utf-8'))
@@ -475,7 +500,8 @@ def sync_pending_core(root: Path, run_id: str) -> list[dict]:
                 c_data['receipt'] = out[:1000]
                 c_data['stored_at'] = stamp()
                 c_data['page_path'] = page_rel_path
+                c_data['verified_recall'] = True
                 write_atomic(cand_path, c_data)
             queue_file.unlink()
-            synced.append({'candidate': cand_id, 'status': 'stored', 'receipt': out[:1000], 'page_path': page_rel_path})
+            synced.append({'candidate': cand_id, 'status': 'stored', 'receipt': out[:1000], 'page_path': page_rel_path, 'verified_recall': True})
     return synced
