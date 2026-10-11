@@ -34,14 +34,13 @@ Produza um documento JSON do tipo **`implementation-review`**, conforme `org_v5/
 O documento só entra na próxima etapa depois de `submit` e `review` independente. Revisor padrão sugerido: **critical-reviewer** (não substitui política organizacional de papéis).
 
 ## Evidência e qualidade
-- Declare método, data, fonte, hipóteses, alternativas, benefícios, custos, riscos, limitações e razões de decisão quando aplicável.
-- Não trate conhecimento empírico como dado provado; apresente-o como hipótese a validar.
-- Se for pesquisa: URLs verificáveis, data de acesso, conclusões sustentadas e limitações. Se teste: execução, comando, output real, critérios mapeados e comportamento observado.
-- REWORK com justificativa objetiva quando o contrato ou evidência falhar. Na terceira rodada sem resolução, **ESCALATED** e consulta humana; nenhum loop infinito.
+Consulte as regras canônicas em [.agents/rules/evidence.md](../rules/evidence.md) e [.agents/rules/governance.md](../rules/governance.md).
+- Evidências devem ser observáveis e auditáveis; premissas empíricas devem ser tratadas como hipóteses a validar.
+- REWORK objetivo quando houver falha de evidência/contrato; na 3ª rodada sem resolução, transite para **ESCALATED** com consulta humana.
 
 ## Proibições explícitas
 Não aceitar documento como prova de execução: exigir comandos, logs e evidências.
-Não falsifique teste, evidência, memória, resultado de scanner ou aprovação humana. Não leia segredos nem transfira dados sensíveis para modelos externos sem autorização e proteção.
+- Consulte [.agents/rules/vetoes.md](../rules/vetoes.md). Proibido autoaprovação, forjar evidências, ignorar falhas ou expor credenciais.
 
 ## Definition of Done
-Todos os campos obrigatórios preenchidos com evidência; validação estrutural concluída; upstream aceito; revisor independente designado; nenhuma evidência inventada; conflitos e riscos reportados. Não se autoavalie como PASS.
+Campos obrigatórios preenchidos com evidência auditável; validação estrutural concluída (`org_v5.cli validate`); upstream aceito; revisor independente designado. Não se autoavalie como PASS.

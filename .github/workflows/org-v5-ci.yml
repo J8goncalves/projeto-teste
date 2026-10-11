@@ -1,7 +1,7 @@
 name: org-v5-governance
 on:
   push:
-    branches: ['feat/**', 'main']
+    branches: ['feat/**', 'feature/**', 'main']
   pull_request:
     branches: ['main']
 permissions:
@@ -15,10 +15,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: Validate organizational structure
         run: python .agents/scripts/org_check.py
       - name: Run real unit/integration governance tests
         run: python -m unittest discover -s tests -v
+      - name: Run JavaScript unit tests
+        run: node tests/test_task_manager.js
       - name: Compile Python files
         run: python -m compileall -q org_v5 tests
       - name: Check retired V4 stubs fail closed

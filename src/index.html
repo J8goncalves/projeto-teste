@@ -1,26 +1,703 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local Task Manager</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
+    <title>Task Manager — Gestão de Tarefas Simples e Eficaz</title>
     <style>
-        body { font-family: sans-serif; margin: 2rem; }
-        .task-list { list-style: none; padding: 0; }
-        .task-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid #ccc; }
-        .task-item.done span.title { text-decoration: line-through; color: #888; }
-        .error { color: red; display: none; }
-        button { cursor: pointer; }
+        :root {
+            --bg-body: #f8fafc;
+            --bg-surface: #ffffff;
+            --border-subtle: #e2e8f0;
+            --border-focus: #2563eb;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --color-primary: #2563eb;
+            --color-primary-hover: #1d4ed8;
+            --color-primary-contrast: #ffffff;
+            --color-todo: #475569;
+            --color-todo-bg: #f1f5f9;
+            --color-inprogress: #b45309;
+            --color-inprogress-bg: #fef3c7;
+            --color-done: #15803d;
+            --color-done-bg: #dcfce7;
+            --color-danger: #b91c1c;
+            --color-danger-hover: #991b1b;
+            --color-danger-bg: #fee2e2;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: 1.5rem 1rem;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        /* Skip Link for Accessibility */
+        .skip-link {
+            position: absolute;
+            top: -50px;
+            left: 0;
+            background: var(--color-primary);
+            color: #ffffff;
+            padding: 0.6rem 1.2rem;
+            text-decoration: none;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            z-index: 1000;
+            transition: top 0.15s ease;
+        }
+        .skip-link:focus {
+            top: 10px;
+            left: 10px;
+            outline: 3px solid #000;
+        }
+
+        /* Focus Ring Standard WCAG 2.2 */
+        :focus-visible {
+            outline: 3px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        header.app-header {
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .app-title h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .app-title p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-badge {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 0.35rem 0.65rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .stat-badge .stat-count {
+            background-color: var(--border-subtle);
+            color: var(--text-primary);
+            border-radius: 9999px;
+            padding: 0.1rem 0.45rem;
+            font-size: 0.8rem;
+        }
+
+        /* Live Announcement Banner */
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .live-feedback {
+            padding: 0.85rem 1.15rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.25rem;
+            font-size: 0.925rem;
+            font-weight: 500;
+            display: none;
+        }
+        .live-feedback.info {
+            background-color: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+            display: block;
+        }
+        .live-feedback.error {
+            background-color: var(--color-danger-bg);
+            color: var(--color-danger);
+            border: 1px solid #fecaca;
+            display: block;
+        }
+
+        /* Recovery Banner for Fail-Closed Quarantine */
+        .recovery-banner {
+            background-color: #fef2f2;
+            border: 2px solid #ef4444;
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-md);
+        }
+        .recovery-banner h3 {
+            color: #991b1b;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .recovery-banner p {
+            color: #7f1d1d;
+            font-size: 0.925rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+        .recovery-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        /* Main Form Card */
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1.5rem;
+        }
+
+        .form-heading {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 0.85rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+            color: var(--text-primary);
+        }
+
+        .required-star {
+            color: var(--color-danger);
+            margin-left: 2px;
+        }
+
+        /* Controls complying with minimum touch target >= 44px */
+        input[type="text"],
+        select {
+            width: 100%;
+            min-height: 44px;
+            padding: 0.65rem 0.85rem;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: var(--text-primary);
+            background-color: #ffffff;
+            transition: border-color 0.15s ease;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 64px;
+            padding: 0.65rem 0.85rem;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: var(--text-primary);
+            background-color: #ffffff;
+            resize: vertical;
+            transition: border-color 0.15s ease;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--border-focus);
+        }
+
+        .error-text {
+            color: var(--color-danger);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 0.35rem;
+            display: none;
+        }
+
+        /* Buttons WCAG minimum touch target 44x44px everywhere */
+        .btn {
+            min-height: 44px;
+            min-width: 44px;
+            padding: 0.55rem 1.1rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            border: 1px solid transparent;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: var(--color-primary-contrast);
+        }
+        .btn-primary:hover {
+            background-color: var(--color-primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-surface);
+            border-color: var(--border-subtle);
+            color: var(--text-secondary);
+        }
+        .btn-secondary:hover {
+            background-color: #f1f5f9;
+            color: var(--text-primary);
+        }
+
+        .btn-danger {
+            background-color: var(--color-danger);
+            color: #ffffff;
+        }
+        .btn-danger:hover {
+            background-color: var(--color-danger-hover);
+        }
+
+        /* Strict touch target compliance on compact buttons */
+        .btn-sm {
+            min-height: 44px;
+            min-width: 44px;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.875rem;
+        }
+
+        /* Toolbar: Search, Filters & Export */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .search-box {
+            flex: 1 1 250px;
+            position: relative;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .filter-btn {
+            min-height: 44px;
+            min-width: 44px;
+            padding: 0.45rem 0.85rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            background-color: var(--bg-surface);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .filter-btn:hover {
+            background-color: #f1f5f9;
+        }
+        .filter-btn.active {
+            background-color: var(--color-primary);
+            border-color: var(--color-primary);
+            color: #ffffff;
+        }
+
+        .backup-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        /* Task List */
+        .task-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--text-muted);
+            background-color: var(--bg-surface);
+            border: 2px dashed var(--border-subtle);
+            border-radius: var(--radius-lg);
+        }
+        .empty-state p {
+            font-size: 0.95rem;
+        }
+
+        .task-item {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-left: 5px solid var(--color-todo);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            transition: box-shadow 0.15s ease, transform 0.15s ease;
+        }
+        .task-item:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .task-item.status-TODO {
+            border-left-color: var(--color-todo);
+        }
+        .task-item.status-IN_PROGRESS {
+            border-left-color: var(--color-inprogress);
+        }
+        .task-item.status-DONE {
+            border-left-color: var(--color-done);
+            opacity: 0.92;
+        }
+        .task-item.status-DONE .task-title {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .task-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .badge-status {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.25rem 0.55rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+        .badge-status.TODO {
+            background-color: var(--color-todo-bg);
+            color: var(--color-todo);
+        }
+        .badge-status.IN_PROGRESS {
+            background-color: var(--color-inprogress-bg);
+            color: var(--color-inprogress);
+        }
+        .badge-status.DONE {
+            background-color: var(--color-done-bg);
+            color: var(--color-done);
+        }
+
+        .task-body {
+            font-size: 0.925rem;
+            color: var(--text-secondary);
+            word-break: break-word;
+        }
+
+        .task-criteria {
+            background-color: #f8fafc;
+            border-left: 3px solid var(--border-subtle);
+            padding: 0.45rem 0.75rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+        .task-criteria strong {
+            color: var(--text-primary);
+        }
+
+        .task-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .task-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Accessible Modal Dialog */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(15, 23, 42, 0.65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-card {
+            background-color: var(--bg-surface);
+            border-radius: var(--radius-lg);
+            max-width: 480px;
+            width: 100%;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .modal-desc {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            word-break: break-word;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        /* Storage & Durability Disclaimer */
+        .storage-note {
+            margin-top: 2rem;
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-md);
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            font-size: 0.825rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+        .storage-note strong {
+            color: var(--text-secondary);
+        }
+
+        /* Mobile Viewport Optimizations (390x844) */
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem 0.75rem;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-group {
+                justify-content: space-between;
+            }
+            .filter-btn {
+                flex: 1 1 auto;
+                text-align: center;
+            }
+            .backup-group {
+                justify-content: stretch;
+            }
+            .backup-group .btn {
+                flex: 1;
+            }
+            .task-actions {
+                width: 100%;
+            }
+            .task-actions .btn {
+                flex: 1;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>Task Manager</h1>
-    <div>
-        <input type="text" id="taskInput" placeholder="New task title">
-        <button id="addBtn">Add Task</button>
-        <div id="errorMsg" class="error">Title cannot be empty!</div>
+    <a href="#mainContent" class="skip-link">Pular para o conteúdo principal</a>
+
+    <div class="container" id="appContainer">
+        <!-- Live region for accessibility -->
+        <div id="liveFeedback" class="live-feedback" aria-live="polite" role="status"></div>
+        <div id="screenReaderAnnouncer" class="visually-hidden" aria-live="assertive"></div>
+
+        <!-- Recovery Banner (fail-closed quarantine protection) -->
+        <div id="recoveryBanner" class="recovery-banner" role="alert" style="display: none;">
+            <h3>⚠️ Falha Crítica de Armazenamento Local</h3>
+            <p>Dados corrompidos foram detectados no seu navegador e a gravação da cópia de segurança falhou (cota cheia ou armazenamento bloqueado). Para evitar a perda dos dados brutos originais, as operações de alteração estão bloqueadas.</p>
+            <div class="recovery-actions">
+                <button type="button" id="btnExportRaw" class="btn btn-secondary btn-sm">Baixar Dados Brutos</button>
+                <button type="button" id="btnDiscardAndReset" class="btn btn-danger btn-sm">Descartar e Reinicializar</button>
+            </div>
+        </div>
+
+        <header class="app-header">
+            <div class="app-title">
+                <h1>Task Manager</h1>
+                <p>Gestão simples, acessível e resiliente de tarefas</p>
+            </div>
+            <div class="stats-bar" aria-label="Resumo de tarefas">
+                <span class="stat-badge">Total: <span id="statTotal" class="stat-count">0</span></span>
+                <span class="stat-badge">A Fazer: <span id="statTodo" class="stat-count">0</span></span>
+                <span class="stat-badge">Em Andamento: <span id="statInProgress" class="stat-count">0</span></span>
+                <span class="stat-badge">Concluídas: <span id="statDone" class="stat-count">0</span></span>
+            </div>
+        </header>
+
+        <main id="mainContent">
+            <!-- Form Section -->
+            <section class="card" aria-labelledby="formHeading">
+                <h2 id="formHeading" class="form-heading">Criar Nova Tarefa</h2>
+                <form id="taskForm" novalidate>
+                    <div class="form-group">
+                        <label for="taskInput">Título da Tarefa <span class="required-star" aria-hidden="true">*</span></label>
+                        <input type="text" id="taskInput" placeholder="Ex: Escrever testes unitários" autocomplete="off" required aria-required="true" aria-describedby="errorMsg">
+                        <div id="errorMsg" class="error-text" role="alert">O título da tarefa não pode estar vazio!</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskDesc">Descrição (opcional)</label>
+                        <textarea id="taskDesc" rows="2" placeholder="Ex: Cobrir cenários de borda e validação de esquema"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskCriteria">Critérios de Conclusão (opcional)</label>
+                        <input type="text" id="taskCriteria" placeholder="Ex: Todos os testes verdes e cobertura > 85%">
+                    </div>
+
+                    <button type="submit" id="addBtn" class="btn btn-primary">
+                        <span>Adicionar Tarefa</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Toolbar: Search, Filters, Export/Import -->
+            <section class="toolbar" aria-label="Controles de busca, filtro e backup">
+                <div class="search-box">
+                    <label for="searchInput" class="visually-hidden">Buscar tarefas</label>
+                    <input type="text" id="searchInput" placeholder="Buscar por título ou descrição...">
+                </div>
+
+                <div class="filter-group" role="group" aria-label="Filtrar por status">
+                    <button type="button" class="filter-btn active" data-filter="ALL" aria-pressed="true">Todas</button>
+                    <button type="button" class="filter-btn" data-filter="TODO" aria-pressed="false">A Fazer</button>
+                    <button type="button" class="filter-btn" data-filter="IN_PROGRESS" aria-pressed="false">Em Andamento</button>
+                    <button type="button" class="filter-btn" data-filter="DONE" aria-pressed="false">Concluídas</button>
+                </div>
+
+                <div class="backup-group">
+                    <button type="button" id="exportBtn" class="btn btn-secondary btn-sm" title="Exportar backup JSON com digest de integridade SHA-256">
+                        Exportar JSON
+                    </button>
+                    <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;" aria-label="Selecionar arquivo JSON para importar">
+                    <button type="button" id="importBtn" class="btn btn-secondary btn-sm" title="Importar e restaurar tarefas a partir de arquivo JSON validado">
+                        Importar JSON
+                    </button>
+                </div>
+            </section>
+
+            <!-- Task List Section -->
+            <section aria-labelledby="taskListHeading">
+                <h2 id="taskListHeading" class="visually-hidden">Lista de Tarefas</h2>
+                <ul id="taskList" class="task-list"></ul>
+                <div id="emptyState" class="empty-state" style="display:none;">
+                    <p>Nenhuma tarefa encontrada para os critérios selecionados.</p>
+                </div>
+            </section>
+
+            <!-- Storage Durability Disclaimer Section -->
+            <footer class="storage-note" aria-label="Informações sobre persistência local">
+                <p><strong>Nota sobre armazenamento local:</strong> Os dados são mantidos exclusivamente no <code>localStorage</code> do seu navegador. O armazenamento local não garante durabilidade perpétua contra limpeza manual do histórico ou expiração de cota do dispositivo. Utilize periodicamente o botão <strong>Exportar JSON</strong> para guardar backups íntegros das suas tarefas.</p>
+            </footer>
+        </main>
     </div>
-    <ul id="taskList" class="task-list"></ul>
+
+    <!-- Custom Accessible Confirmation Modal (replaces window.confirm) -->
+    <div id="confirmModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmDesc" aria-hidden="true">
+        <div class="modal-card">
+            <h3 id="confirmTitle" class="modal-title">Confirmar Exclusão</h3>
+            <p id="confirmDesc" class="modal-desc">Você tem certeza de que deseja excluir esta tarefa permanentemente?</p>
+            <div class="modal-actions">
+                <button type="button" id="modalCancelBtn" class="btn btn-secondary">Cancelar</button>
+                <button type="button" id="modalConfirmBtn" class="btn btn-danger">Excluir Tarefa</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
