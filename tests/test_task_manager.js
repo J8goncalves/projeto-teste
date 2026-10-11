@@ -478,7 +478,7 @@ async function runTests() {
     global.localStorage.setItem = realSetItem;
 
     // Comprova desbloqueio exclusivo mediante ação humana explícita de descarte
-    const resetResult = lockedStore.discardCorruptedAndReset();
+    const resetResult = lockedStore.discardCorruptedAndReset(true);
     assert.strictEqual(resetResult, true, 'Descarte e reinicialização humana deve ter sucesso');
     assert.strictEqual(lockedStore.storageLocked, false, 'Armazenamento deve ser destravado');
     assert.strictEqual(lockedStore.tasks.length, 0, 'Lista deve iniciar limpa após reset');
@@ -489,8 +489,96 @@ async function runTests() {
     assert.strictEqual(lockedStore.tasks.length, 1);
     console.log('✓ Teste 12 passou: Quarentena fail-closed adversarial validada com retenção e bloqueio estritos.');
 
+    // [Teste 13 - Ajuste 1] Verificando Reinicialização Transacional Fail-Closed com QuotaExceededError
+    console.log('[Teste 13 - Ajuste 1] Verificando Reinicialização Transacional Fail-Closed...');
+
+    // 1. Simula estado corrompido e bloqueado
+    global._elements = {};
+    delete global._filterBtns;
+    const rawCorruptData13 = 'RAW_CORRUPTED_JSON_DATA_SCENARIO_13';
+    global.localStorage.setItem('tasks', rawCorruptData13);
+
+    // Mock para forçar falha de gravação da quarentena, ativando fail-closed
+    global.localStorage.setItem = function(key, val) {
+        if (key.startsWith('tasks_corrupted_quarantine_')) {
+            throw new Error('QuotaExceededError: Disco cheio para quarentena');
+        }
+        return realSetItem.call(global.localStorage, key, val);
+    };
+
+    eval(appCode);
+    const store13 = global.__taskStore;
+    assert.strictEqual(store13.storageLocked, true, 'Deve iniciar bloqueado por falha na quarentena');
+    assert.strictEqual(global.localStorage.getItem('tasks'), rawCorruptData13, 'Dado bruto deve estar preservado no storage');
+
+    // 2. Tentativa sem confirmação humana explícita DEVE ser rejeitada
+    const unconfirmedReset = store13.discardCorruptedAndReset(false);
+    assert.strictEqual(unconfirmedReset, false, 'Reset sem confirmação deve retornar false');
+    assert.strictEqual(store13.storageLocked, true, 'Bloqueio deve permanecer ativo');
+    assert.strictEqual(global.localStorage.getItem('tasks'), rawCorruptData13, 'Dado bruto continua intacto');
+
+    // 3. Força QuotaExceededError durante a gravação de reinicialização (tentativa de salvar [] na chave tasks)
+    global.localStorage.setItem = function(key, val) {
+        if (key === 'tasks') {
+            throw new Error('QuotaExceededError: Disco cheio ao salvar reinicialização');
+        }
+        return realSetItem(key, val);
+    };
+
+    // Tenta descarte e reinicialização com confirmação, mas storage falha:
+    const failedReset = store13.discardCorruptedAndReset(true);
+    assert.strictEqual(failedReset, false, 'Reset que falha no localStorage deve retornar false');
+    assert.strictEqual(store13.storageLocked, true, 'Bloqueio DEVE permanecer ativo após falha transacional');
+    assert.strictEqual(store13.exportRawCorruptedData(), rawCorruptData13, 'Referência aos dados brutos DEVE ser mantida');
+
+    // Comprova que ações mutativas continuam estritamente bloqueadas
+    assert.throws(() => {
+        store13.add('Tentativa enquanto falha persistir');
+    }, /Armazenamento bloqueado/);
+
+    // 4. Teste da UI com simulação do botão de descarte e janela confirm
+    const recoveryBannerEl = global.document.getElementById('recoveryBanner');
+    const btnDiscardEl = global.document.getElementById('btnDiscardAndReset');
+    const taskInputEl = global.document.getElementById('taskInput');
+    const addBtnEl = global.document.getElementById('addBtn');
+    const liveFeedbackEl = global.document.getElementById('liveFeedback');
+
+    recoveryBannerEl.style.display = 'block';
+    taskInputEl.disabled = true;
+    addBtnEl.disabled = true;
+
+    // Se o usuário confirmar no modal mas a gravação falhar:
+    global.window.confirm = () => true;
+    btnDiscardEl.click();
+
+    // A UI deve manter o banner visível, os controles bloqueados e notificar erro
+    assert.strictEqual(recoveryBannerEl.style.display, 'block', 'Banner DEVE continuar visível após falha no reset');
+    assert.strictEqual(taskInputEl.disabled, true, 'Input deve continuar bloqueado');
+    assert.strictEqual(addBtnEl.disabled, true, 'Botão de adicionar deve continuar bloqueado');
+    assert.ok(liveFeedbackEl.textContent.includes('Falha crítica ao reiniciar'), 'Notificação de erro deve ser exibida ao usuário');
+
+    // 5. Restaura localStorage funcional e executa o caminho de recuperação bem-sucedido
+    global.localStorage.setItem = realSetItem;
+
+    btnDiscardEl.click();
+
+    // A UI agora DEVE ser destravada com sucesso
+    assert.strictEqual(store13.storageLocked, false, 'Armazenamento destravado com sucesso');
+    assert.strictEqual(store13.tasks.length, 0, 'Tarefas limpas');
+    assert.strictEqual(global.localStorage.getItem('tasks'), '[]', 'LocalStorage agora contém array vazio persistido');
+    assert.strictEqual(recoveryBannerEl.style.display, 'none', 'Banner de recuperação deve ser ocultado após sucesso');
+    assert.strictEqual(taskInputEl.disabled, false, 'Input deve ser liberado');
+    assert.strictEqual(addBtnEl.disabled, false, 'Botão de adicionar deve ser liberado');
+    assert.ok(liveFeedbackEl.textContent.includes('Armazenamento reinicializado limpo'), 'Notificação de sucesso exibida');
+
+    // Cria nova tarefa para comprovar funcionamento normal pós-reset
+    const finalTask = store13.add('Tarefa de Sucesso Pós-Recuperação');
+    assert.strictEqual(finalTask.title, 'Tarefa de Sucesso Pós-Recuperação');
+    assert.strictEqual(store13.tasks.length, 1);
+    console.log('✓ Teste 13 passou: Reinicialização transacional fail-closed e recuperação comprovadas.');
+
     console.log('\n========================================================================');
-    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (12/12 cenários de alta precisão)!');
+    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (13/13 cenários de alta precisão)!');
     console.log('========================================================================');
 }
 

@@ -8,7 +8,8 @@
 - `1d6328b` — Etapa E1: Incorporação seletiva (Karpathy Skills, Paperclip, Matt Pocock).
 - `3871302` — Etapa E2: Desenvolvimento e entrega inicial do Piloto A (Task Manager).
 - `3ddef49` — Fechamento E2: Correções pós-auditoria (focus trap, touch targets 44px, fidelidade de estado, fail-closed).
-- `HEAD` (Atual) — Fechamento Final / PR #1: Teste real de importação adulterada (P1), quarentena fail-closed adversarial (P2), rastreabilidade organizacional (P3) e auditoria UX/UI em navegador real (P4).
+- `ae6ffd6` — Fechamento Piloto A: Teste real de importação adulterada (P1), quarentena fail-closed adversarial (P2) e CI verde.
+- `HEAD` (Atual) — Último Ajuste do PR #1: Reinicialização transacional fail-closed (Ajuste 1) e atribuição correta das evidências organizacionais (Ajuste 2).
 
 ---
 
@@ -16,10 +17,10 @@
 
 A Fase E foi concluída com foco exclusivo na **Opção A (Task Manager como Produto Final)**. A organização multiagente V5.1.1 atuou estritamente nos bastidores de engenharia (especificação, arquitetura, codificação, testes e segurança), entregando um produto de usuário final limpo, intuitivo e sem qualquer exposição de controles ou painéis administrativos de agentes na interface.
 
-Este documento consolida as evidências técnicas e organizacionais exigidas para o fechamento formal do PR #1, com foco na resolução das pendências apontadas pela auditoria independente:
+Este documento consolida as evidências técnicas e a rastreabilidade organizacional exigidas para o fechamento formal do PR #1, com foco na resolução de todos os apontamentos da auditoria independente:
 1. **P1 — Teste do Controlador de Importação Adulterada:** Rejeição real de backup com digest divergente sem qualquer mutação de estado.
-2. **P2 — Quarentena Fail-Closed Adversarial:** Proteção contra perda e sobrescrita de dados quando a gravação da quarentena falha, bloqueando mutações e fornecendo banner de recuperação com exportação de dados brutos e reinicialização humana explícita.
-3. **P3 — Rastreabilidade Organizacional Estrita:** Registro dos artefatos reais da run `run-pilot-v5-002`, handoffs contratuais, e rotulagem explícita de telemetria não medida como `NÃO MEDIDO` e logs não gravados como `NÃO VERIFICÁVEL` (zero fabricação).
+2. **P2 & Ajuste 1 — Quarentena e Reinicialização Transacional Fail-Closed:** Proteção contra perda e sobrescrita de dados quando a gravação da quarentena ou a reinicialização falham por cota de disco; exigência de confirmação humana; retenção dos dados brutos e do banner de recuperação até confirmação da persistência;
+3. **P3 & Ajuste 2 — Atribuição Precisa das Evidências Organizacionais:** Separação explícita entre evidências históricas do Control Plane (`run-pilot-v5-002`), evidências técnicas da Fase E (commits, testes, CI e screenshots), e classificação transparente de telemetrias não medidas (`NÃO MEDIDO`) e logs ausentes (`NÃO VERIFICÁVEL`), sem qualquer fabricação.
 4. **P4 — Matriz de Auditoria UX/UI & Acessibilidade:** Validação em navegador real via Chrome DevTools MCP em desktop e mobile, com console limpo (0 erros/warnings).
 
 ---
@@ -30,9 +31,9 @@ Este documento consolida as evidências técnicas e organizacionais exigidas par
 | :--- | :--- | :--- | :---: |
 | **1. Produto** | Foco exclusivo no usuário final; eliminação de complexidade desnecessária. | Interface 100% limpa, carregamento instantâneo (< 50ms) e zero dependências de terceiros em runtime. | **APROVADO** |
 | **2. UI/UX & Acessibilidade** | Alvos de toque >= 44x44px, foco visível, modal acessível com `inert` e focus trap, suporte à tecla Escape. | Modal acessível com foco inicial seguro em Cancelar, focus trap e atributo `inert` nativo; botões `.btn-sm`, `.btn` e inputs com >= 44x44px; navegação por teclado validada no browser real. | **APROVADO** |
-| **3. Funcionalidade** | P0 (tarefas estruturadas, máquina TODO ↔ IN_PROGRESS ↔ DONE, migração v0→v1) e P1 (busca, filtros, restauração com digest SHA-256). | 12/12 testes automatizados aprovados no Node.js; fidelidade estrita de IDs, status e datas durante restauração; anti-replay e detecção de adulteração comprovados. | **APROVADO** |
-| **4. Segurança** | Imunidade a DOM XSS, CSP estrita, digest SHA-256 fail-closed sem fallbacks não criptográficos. | Uso exclusivo de `textContent`; CSP estrita em meta tag; remoção de fallback fraco; bloqueio fail-closed de persistência e importação. | **APROVADO** |
-| **5. Operação** | Suíte de testes rápida (< 5s), zero regressões na V5.1.1, zero erros/warnings no console do navegador. | 49 testes Python executados (4.4s, 48 aprovados, 1 skip isolado), 12 testes Node.js aprovados (< 1s), `org_check.py` 19/19 OK, 0 erros e 0 warnings no DevTools. | **APROVADO** |
+| **3. Funcionalidade** | P0 (tarefas estruturadas, máquina TODO ↔ IN_PROGRESS ↔ DONE, migração v0→v1) e P1 (busca, filtros, restauração com digest SHA-256). | 13/13 testes automatizados aprovados no Node.js; fidelidade estrita de IDs, status e datas durante restauração; anti-replay e detecção de adulteração comprovados. | **APROVADO** |
+| **4. Segurança** | Imunidade a DOM XSS, CSP estrita, digest SHA-256 fail-closed sem fallbacks não criptográficos. | Uso exclusivo de `textContent`; CSP estrita em meta tag; remoção de fallback fraco; bloqueio fail-closed de persistência, importação e reinicialização. | **APROVADO** |
+| **5. Operação** | Suíte de testes rápida (< 5s), zero regressões na V5.1.1, zero erros/warnings no console do navegador. | 49 testes Python executados (4.4s, 48 aprovados, 1 skip isolado), 13 testes Node.js aprovados (< 1s), `org_check.py` 19/19 OK, 0 erros e 0 warnings no DevTools. | **APROVADO** |
 
 ---
 
@@ -56,31 +57,43 @@ Este documento consolida as evidências técnicas e organizacionais exigidas par
       - `localStorage.getItem("tasks")`: **100% inalterado**.
     - Importação subseqüente do backup legítimo: sucesso total com integridade de IDs e status `DONE`.
 
-### 3.2 P2 — Quarentena Fail-Closed Adversarial e Proteção de Sobrescrita
-- **Problema Abordado:** Quando o `localStorage` continha dados corrompidos e a gravação da chave de quarentena falhava (ex.: `QuotaExceededError`), uma inicialização padrão sobrescreveria a chave `tasks` com `[]` ou apagaria os dados brutos, causando perda de dados irreparável.
-- **Implementação Técnica:**
+### 3.2 P2 & Ajuste 1 — Quarentena e Reinicialização Transacional Fail-Closed
+- **Problema Abordado:**
+  1. Se a gravação da quarentena falhasse (ex.: `QuotaExceededError`), uma inicialização ingênua apagaria os dados brutos com `[]`.
+  2. Anteriormente, o método `discardCorruptedAndReset()` desativava `storageLocked` e limpava a referência dos dados corrompidos antes de confirmar se a gravação de reinicialização no `localStorage` tinha obtido sucesso.
+- **Implementação Técnica Transacional:**
   - Em `TaskStore.handleCorruptedData(rawContent, reason)`:
     - Se a gravação de `tasks_corrupted_quarantine_<timestamp>` falhar (ou for bloqueada por cota), o sistema entra em **FAIL-CLOSED**:
       - `this.storageLocked = true`
       - `this.quarantineFailed = true`
       - `this.rawCorruptedData = rawContent`
       - A chave `tasks` no `localStorage` **permanece intocada** com os dados brutos originais.
-    - O método `save()` bloqueia qualquer tentativa de gravação (`if (this.storageLocked) return false`).
-    - Métodos mutativos (`add`, `updateStatus`, `delete`, `restore`) lançam exceção explícita (`Armazenamento bloqueado: Dados corrompidos aguardando recuperação ou descarte humano explícito`).
+  - Em `TaskStore.discardCorruptedAndReset(confirmed)`:
+    - **Exigência de Confirmação:** Se chamado sem confirmação explícita (`confirmed !== true`), a operação é bloqueada imediatamente (`return false`).
+    - **Gravação Transacional Prévia:** Tenta persistir `[]` no `localStorage` antes de alterar qualquer estado interno.
+    - **Tratamento de Falha no Reset:** Se `localStorage.setItem` lançar exceção (ex.: `QuotaExceededError`), o catch garante `this.storageLocked = true`, preserva `rawCorruptedData` e retorna `false`.
+    - **Liberação Condicionada:** Apenas se a gravação de `[]` for confirmada com sucesso, os indicadores são liberados (`storageLocked = false`, `rawCorruptedData = null`, `tasks = []`).
   - **Interface com o Usuário:**
-    - Renderização do `#recoveryBanner` com aviso em vermelho: *"Falha Crítica de Armazenamento: Dados locais corrompidos detectados e não foi possível gravar quarentena (disco cheio ou cota excedida). O armazenamento foi bloqueado para proteger seus dados contra sobrescrita."*
-    - Botão **"Baixar Dados Brutos"** (`btnExportRaw`): aciona download imediato do conteúdo corrompido em arquivo de texto para recuperação externa forense.
-    - Botão **"Descartar e Reinicializar"** (`btnDiscardAndReset`): executa `store.discardCorruptedAndReset()`, liberando o bloqueio (`storageLocked = false`), limpando a chave com `[]` e ocultando o banner somente após consentimento humano deliberado.
+    - Diálogo explícito `window.confirm`: se o usuário cancelar, nada é alterado e o bloqueio é mantido.
+    - Se o descarte transacional falhar (`!success`), a interface:
+      - Mantém o `#recoveryBanner` visível com destaque;
+      - Mantém os campos de entrada e botão adicionar desabilitados;
+      - Exibe notificação de erro informando que o armazenamento permaneceu bloqueado para proteção dos dados brutos.
+    - O `#recoveryBanner` só é ocultado e a interface liberada após confirmação explícita de persistência.
 - **Evidências de Teste:**
-  - **Teste Automatizado:** Teste 12 em `tests/test_task_manager.js`.
-  - **Teste em Navegador Real (Chrome DevTools MCP):**
-    - Simulação com injeção de `CORRUPTED_RAW_UNPARSABLE_DATA_123456` e intercepção de `localStorage.setItem` para simular `QuotaExceededError`.
-    - Resultado:
-      - `storageLocked`: **true**.
-      - `rawPreservedInTasksKey`: **true** (dado bruto preservado na chave `tasks`).
-      - `addBlocked`: **true** (tentativa de mutação lançou exceção).
-      - `#recoveryBanner`: visível na interface.
-      - Ação humana `discardCorruptedAndReset()`: desbloqueou o armazenamento (`storageLocked = false`) e restabeleceu operações normais.
+  - **Testes Automatizados:** Teste 12 (quarentena fail-closed) e Teste 13 (falha transacional de cota no reset e recuperação subsequente) em `tests/test_task_manager.js`.
+  - **Navegador Real (Chrome DevTools MCP):** Smoke test executado via `evaluate_script`:
+    - Simulação com injeção de `CORRUPTED_SMOKE_TEST_DATA_99999` e erro de quarentena.
+    - Falha simulada de cota ao acionar o botão de descarte:
+      - `lockedAfterFailedReset`: **true**.
+      - `rawPreservedAfterFailedReset`: **true**.
+      - `bannerVisibleAfterFailedReset`: **true**.
+      - `inputDisabledAfterFailedReset`: **true**.
+      - `feedbackHasError`: **true** (*"Falha crítica ao reiniciar"*).
+    - Restauração de persistência normal e acionamento bem-sucedido:
+      - `unlockedAfterSuccessfulReset`: **true**.
+      - `bannerHiddenAfterSuccessfulReset`: **true**.
+      - `newTaskCreated`: **true**.
 
 ---
 
@@ -103,28 +116,48 @@ Este documento consolida as evidências técnicas e organizacionais exigidas par
 
 ---
 
-## 5. Rastreabilidade Organizacional V5.1.1 (Run `run-pilot-v5-002`)
+## 5. Atribuição e Rastreabilidade das Evidências
 
-Abaixo está o registro dos artefatos formais gerados durante a execução do Piloto A, extraídos diretamente do arquivo de governança `runs/run-pilot-v5-002/state.json`:
+Em cumprimento estrito às diretrizes de governança e auditoria independente, as evidências desta entrega são separadas em quatro categorias transparentes:
 
-| Artefato ID | Tipo / Contrato | Papel Emissor | SHA-256 do Artefato | Timestamp de Envio | Revisor Contratual | Timestamp Aceite | Decisão / Parecer |
+### 5.1 Evidência Histórica do Control Plane (`run-pilot-v5-002`)
+A run `run-pilot-v5-002` contém artefatos históricos do microprojeto Task Manager original, gerados antes da etapa E1 (incorporação seletiva Karpathy/Paperclip/Matt Pocock) e da implementação final E2.
+- O arquivo [`runs/run-pilot-v5-002/state.json`](file:///d:/Antigravity%20Projects/projeto-teste/runs/run-pilot-v5-002/state.json) registra formalmente `phase: "DESIGN"`.
+- O artefato `build-001.json` dessa run aponta para o commit histórico `45c5b78`.
+- **Delimitação de Escopo:** A run `run-pilot-v5-002` comprova o funcionamento das regras, contratos e checagens do Control Plane V5.1.1 (intake, prd, architecture, build, qa, security, reviews sequenciais e resume package). Ela **não** representa a execução da organização sobre a versão final do produto entregue no PR #1.
+
+Abaixo, o registro histórico formal dos artefatos dessa run:
+
+| Artefato ID | Tipo / Contrato | Papel Emissor | SHA-256 do Artefato | Timestamp de Envio | Revisor Contratual | Timestamp Aceite | Parecer |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `intake-001` | intake | orchestrator | `a9a88c1fe45316d31eac99befe01c42a0a2691c84b3a28d4d245423572eb9302` | 2026-10-10 17:33:16 UTC | critical-reviewer | 2026-10-10 17:33:34 UTC | Aprovado (ok) |
 | `market-001` | market-research | market-researcher | `05c79d0b34b8cbc2f4af52689ed75c2f12ca4b8c9daf5aaa12ad3cbb77c5dcb2` | 2026-10-10 17:33:34 UTC | critical-reviewer | 2026-10-10 17:33:34 UTC | Aprovado (ok) |
 | `crit-001` | critical-review | critical-reviewer | `5414e0d258e3ccdf8f9a0818d3db6a149ce6d9f9418bb26b1ad85d3e309eedce` | 2026-10-10 17:33:34 UTC | legal-compliance | 2026-10-10 17:33:35 UTC | Aprovado (ok) |
-| `prd-001` | prd | product-manager | `ac3f2b503807d8272babd5fbd48c1d29d80440e7a422becca24ee4f94dff4af9` | 2026-10-10 17:33:48 UTC | qa | 2026-10-10 17:38:01 UTC | Aprovado (Histórias e critérios de aceite testáveis) |
-| `arch-001` | architecture | architect | `9880b3bdf3cb51357fd3fa236115157363ec965f131297cdb6be9c0914437638` | 2026-10-10 17:41:04 UTC | security-reviewer | 2026-10-10 17:41:54 UTC | Aprovado (Strictly local storage, zero network risks) |
-| `build-001` | build | developer | `0687b62077318e1609bcaf9d9388d9cfd7b6ff99fdda9aabb22fa06dd41d5a1d` | 2026-10-10 17:47:04 UTC | implementation-reviewer | 2026-10-10 17:50:42 UTC | Aprovado (Build completed, tests passed) |
-| `sec-001` | security-report | security-reviewer | `56931c144b81abb400eb2d630f411b2b8dac91dc8458907df7ef09143b171bd8` | 2026-10-10 17:50:47 UTC | implementation-reviewer | 2026-10-10 18:04:17 UTC | Aprovado (Security review passed) |
-| `qa-001` | qa-report | qa | `cbe602df2ddbc6aad985975a8a5fdc97a382dd9cc3af19ce89dcdeeaeb7efaa9` | 2026-10-10 18:01:53 UTC | implementation-reviewer | 2026-10-10 18:04:12 UTC | Aprovado (QA tests passed) |
+| `prd-001` | prd | product-manager | `ac3f2b503807d8272babd5fbd48c1d29d80440e7a422becca24ee4f94dff4af9` | 2026-10-10 17:33:48 UTC | qa | 2026-10-10 17:38:01 UTC | Aprovado (Critérios testáveis) |
+| `arch-001` | architecture | architect | `9880b3bdf3cb51357fd3fa236115157363ec965f131297cdb6be9c0914437638` | 2026-10-10 17:41:04 UTC | security-reviewer | 2026-10-10 17:41:54 UTC | Aprovado (Local storage estrito) |
+| `build-001` | build | developer | `0687b62077318e1609bcaf9d9388d9cfd7b6ff99fdda9aabb22fa06dd41d5a1d` | 2026-10-10 17:47:04 UTC | implementation-reviewer | 2026-10-10 17:50:42 UTC | Aprovado (Build commit 45c5b78) |
+| `sec-001` | security-report | security-reviewer | `56931c144b81abb400eb2d630f411b2b8dac91dc8458907df7ef09143b171bd8` | 2026-10-10 17:50:47 UTC | implementation-reviewer | 2026-10-10 18:04:17 UTC | Aprovado (Security passed) |
+| `qa-001` | qa-report | qa | `cbe602df2ddbc6aad985975a8a5fdc97a382dd9cc3af19ce89dcdeeaeb7efaa9` | 2026-10-10 18:01:53 UTC | implementation-reviewer | 2026-10-10 18:04:12 UTC | Aprovado (QA passed) |
 | `impl-001` | implementation-review | implementation-reviewer | `9a86ae18209def48a80ca2a1fc6f6ce7bf64b1daff45a298755ed78864590fe6` | 2026-10-10 18:05:28 UTC | critical-reviewer | 2026-10-10 18:05:32 UTC | Aprovado (Review looks good) |
-| `release-001` | release | release-manager | `e08e84fc5d04b315099df6b12dd71aa601b45439f0b8f7a6297c5c782fe5df20` | 2026-10-10 18:05:45 UTC | — | — | Submetido para Homologação Humana |
+| `release-001` | release | release-manager | `e08e84fc5d04b315099df6b12dd71aa601b45439f0b8f7a6297c5c782fe5df20` | 2026-10-10 18:05:45 UTC | — | — | Submetido para Homologação |
 
-### Telemetria e Métricas Operacionais
-- **Contagem de Tokens de Inferência / Custo Financeiro:** **`NÃO MEDIDO`** (O ambiente local e os scripts de orquestração não coletam métricas de tokens por chamada de modelo; para manter a integridade das evidências, nenhum valor foi estimado ou simulado).
-- **Logs de Execução Não Persistidos em Disco:** **`NÃO VERIFICÁVEL`** (Qualquer histórico ou interação que não conste nos arquivos JSON de `runs/run-pilot-v5-002/` ou nas transcripts registradas é classificado estritamente como não verificável).
-- **Taxa de Retrabalho:** 5 correções apontadas pela auditoria independente, todas resolvidas e verificadas nesta iteração com 100% de sucesso.
-- **Validação de Estrutura Organizacional (`org_check.py`):** **19 papéis, 19 contratos, 0 erros**.
+### 5.2 Evidência Técnica da Fase E (Produto Final e PR #1)
+A comprovação do produto final incorporado no PR #1 decorre exclusivamente das evidências técnicas reproduzíveis e imutáveis da branch `feature/v5.1.1-enhancements-pilot-a`:
+- **Commits Sequenciais:**
+  - `1d6328b`: Incorporação seletiva das três práticas (Karpathy, Paperclip, Matt Pocock).
+  - `3871302`: Desenvolvimento e entrega do Task Manager na arquitetura V5.1.1.
+  - `3ddef49`: Fechamento pós-auditoria (focus trap, touch targets 44px, fidelidade de estado, fail-closed).
+  - `ae6ffd6`: Teste do controlador de importação adulterada (P1), quarentena fail-closed (P2) e CI verde.
+  - Commit final incremental: Reinicialização transacional fail-closed e atribuição de evidências.
+- **Suítes Automatizadas:** 13/13 testes JavaScript aprovados e 48 testes Python aprovados (1 skip).
+- **Integração Contínua (CI):** Execuções verdes no GitHub Actions em todos os commits finais da branch.
+- **Auditoria de Navegador Real:** Capturas em `evidence/` (`task_manager_p0.png`, `task_manager_mobile.png`, `task_manager_filter.png`, `task_manager_final_p1_p2.png`) e zero erros/warnings no console.
+
+### 5.3 Evidência de Execução Independente de Subagentes na Versão Final
+Classificada estritamente como **`NÃO VERIFICÁVEL`**, pois não há arquivos de log de execução dedicados registrando subagentes autônomos operando na versão final de fechamento. Para manter a veracidade absoluta, nenhum log ou registro foi fabricado.
+
+### 5.4 Tempo e Consumo de Tokens por Agente
+Classificados estritamente como **`NÃO MEDIDO`**, uma vez que a execução local e as chamadas via IDE não possuem telemetria padronizada de contagem e custo financeiro de tokens de inferência. Nenhuma estimativa arbitrária foi inserida.
 
 ---
 
@@ -132,7 +165,7 @@ Abaixo está o registro dos artefatos formais gerados durante a execução do Pi
 
 ### 6.1 Suíte JavaScript do Task Manager (`tests/test_task_manager.js`)
 Comando executado: `node tests/test_task_manager.js`  
-Resultado: **12/12 cenários aprovados (100% de sucesso)**
+Resultado: **13/13 cenários aprovados (100% de sucesso)**
 
 ```
 --- Iniciando Suíte de Testes Automatizados do Task Manager (Fase E - Fechamento Final / PR #1) ---
@@ -160,9 +193,11 @@ Resultado: **12/12 cenários aprovados (100% de sucesso)**
 ✓ Teste 11 passou: Rejeição real de importação adulterada sem mutação comprovada no controlador.
 [Teste 12 - P2] Verificando Quarentena Fail-Closed Adversarial e Proteção de Sobrescrita...
 ✓ Teste 12 passou: Quarentena fail-closed adversarial validada com retenção e bloqueio estritos.
+[Teste 13 - Ajuste 1] Verificando Reinicialização Transacional Fail-Closed...
+✓ Teste 13 passou: Reinicialização transacional fail-closed e recuperação comprovadas.
 
 ========================================================================
-✅ TODOS OS TESTES PASSARAM COM SUCESSO (12/12 cenários de alta precisão)!
+✅ TODOS OS TESTES PASSARAM COM SUCESSO (13/13 cenários de alta precisão)!
 ========================================================================
 ```
 
@@ -171,6 +206,17 @@ Comando executado: `.\.venv\Scripts\python.exe -m unittest discover -s tests -v`
 Resultado: **Ran 49 tests in 4.429s — OK (skipped=1)**
 - 48 testes unitários e de integração de governança aprovados com sucesso.
 - 1 teste pulado (`test_scenario_7c_fast_recall_and_status_without_ollama`) intencionalmente, conforme homologado para ambientes sem o backend live on-premise do AI Memory instalado.
+
+### 6.3 Verificação Organizacional (`.agents/scripts/org_check.py`)
+Comando executado: `.\.venv\Scripts\python.exe .agents/scripts/org_check.py`  
+Resultado:
+```json
+{
+  "roles": 19,
+  "contracts": 19,
+  "errors": []
+}
+```
 
 ---
 

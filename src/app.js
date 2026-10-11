@@ -274,13 +274,30 @@
             return this.rawCorruptedData || '';
         }
 
-        discardCorruptedAndReset() {
+        discardCorruptedAndReset(confirmed = false) {
+            if (confirmed !== true) {
+                console.warn('Operação bloqueada: reinicialização e descarte de dados corrompidos exigem confirmação explícita.');
+                return false;
+            }
+
+            // Tenta transacionalmente persistir array vazio no localStorage primeiro.
+            // Se falhar (disco cheio, cota excedida, erro de I/O):
+            // os dados corrompidos brutos e o bloqueio fail-closed permanecem intactos!
+            try {
+                localStorage.setItem(this.storageKey, JSON.stringify([]));
+            } catch (err) {
+                console.error('Falha transacional ao persistir reinicialização limpa no localStorage (cota ou bloqueio):', err);
+                this.storageLocked = true;
+                return false;
+            }
+
+            // Somente após persistência confirmada no storage, os estados são liberados:
             this.storageLocked = false;
             this.quarantineFailed = false;
             this.corruptedDataDetected = false;
             this.rawCorruptedData = null;
             this.tasks = [];
-            return this.save();
+            return true;
         }
 
         getStats() {
@@ -390,11 +407,29 @@
 
         if (btnDiscardAndReset) {
             btnDiscardAndReset.addEventListener('click', () => {
+                let confirmed = false;
                 if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-                    const confirmed = window.confirm('ATENÇÃO: Deseja descartar permanentemente os dados corrompidos e reiniciar o armazenamento limpo? Esta ação não pode ser desfeita.');
-                    if (!confirmed) return;
+                    confirmed = window.confirm('ATENÇÃO: Deseja descartar permanentemente os dados corrompidos e reiniciar o armazenamento limpo? Esta ação não pode ser desfeita.');
+                } else {
+                    confirmed = true;
                 }
-                store.discardCorruptedAndReset();
+
+                if (!confirmed) {
+                    notifyUser('Operação cancelada. Os dados corrompidos permanecem protegidos.', 'info');
+                    return;
+                }
+
+                const success = store.discardCorruptedAndReset(true);
+                if (!success) {
+                    // Falha de persistência: mantém o banner visível e a interface bloqueada
+                    if (recoveryBanner) recoveryBanner.style.display = 'block';
+                    if (taskInput) taskInput.disabled = true;
+                    if (addBtn) addBtn.disabled = true;
+                    notifyUser('Falha crítica ao reiniciar: Ocorreu erro ao gravar no armazenamento (cota ou bloqueio). Dados brutos mantidos protegidos.', 'error');
+                    return;
+                }
+
+                // Somente libera a interface após persistência confirmada
                 if (recoveryBanner) recoveryBanner.style.display = 'none';
                 if (taskInput) taskInput.disabled = false;
                 if (addBtn) addBtn.disabled = false;
