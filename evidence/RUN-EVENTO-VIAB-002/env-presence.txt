@@ -1,0 +1,7 @@
+﻿GITHUB_TOKEN_present=False
+AGY_RUNNER_SECRET_present=False
+AGY_AGENT_INSTANCE_ID_present=False
+AGY_ASSIGNED_ROLE_present=False
+AGY_RUNNER_TOKEN_present=False
+captured_at=2026-10-11T01:07:18.4976841-03:00
+note=somente presenca (booleano) verificada; valores nunca registrados

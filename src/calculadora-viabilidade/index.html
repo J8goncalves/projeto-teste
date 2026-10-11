@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Content Security Policy estrita conforme especificado em ART-ARCH-001 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none';">
+  <title>Calculadora de Viabilidade Financeira de Eventos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+
+  <div class="container">
+    <header class="app-header" role="banner">
+      <h1>Calculadora de Viabilidade Financeira de Eventos</h1>
+      <p>Simulador financeiro em tempo real para pequenos produtores e organizadores independentes de eventos.</p>
+    </header>
+
+    <main id="main-content" role="main" class="calculator-grid">
+      <!-- Painel Esquerdo: Entrada de Parâmetros -->
+      <section class="card" aria-labelledby="heading-params">
+        <h2 id="heading-params">Parâmetros do Evento</h2>
+        
+        <form id="viability-form" onsubmit="return false;" novalidate>
+          <!-- Custos Fixos Totais -->
+          <div class="form-group">
+            <label for="input-fixed-costs">Custos Fixos Totais (R$)</label>
+            <div class="field-hint" id="hint-fixed-costs">Espaço, som, iluminação, equipe base, alvarás e divulgação inicial.</div>
+            <div class="input-wrapper">
+              <span class="input-prefix" aria-hidden="true">R$</span>
+              <input 
+                type="number" 
+                id="input-fixed-costs" 
+                name="fixedCosts" 
+                min="0" 
+                step="50" 
+                value="5000" 
+                aria-describedby="hint-fixed-costs err-fixed-costs" 
+                aria-required="true"
+                aria-invalid="false">
+            </div>
+            <div class="field-error" id="err-fixed-costs" role="alert">Informe um valor válido maior ou igual a zero.</div>
+          </div>
+
+          <!-- Preço do Ingresso -->
+          <div class="form-group">
+            <label for="input-ticket-price">Preço Médio do Ingresso (R$)</label>
+            <div class="field-hint" id="hint-ticket-price">Valor de venda ao participante (ou preço médio ponderado).</div>
+            <div class="input-wrapper">
+              <span class="input-prefix" aria-hidden="true">R$</span>
+              <input 
+                type="number" 
+                id="input-ticket-price" 
+                name="ticketPrice" 
+                min="0" 
+                step="5" 
+                value="70" 
+                aria-describedby="hint-ticket-price err-ticket-price" 
+                aria-required="true"
+                aria-invalid="false">
+            </div>
+            <div class="field-error" id="err-ticket-price" role="alert">Informe um valor de ingresso válido.</div>
+          </div>
+
+          <!-- Custo Variável por Participante -->
+          <div class="form-group">
+            <label for="input-variable-cost">Custo Variável por Participante (R$)</label>
+            <div class="field-hint" id="hint-variable-cost">Alimentação, kit, crachá, copos descartáveis e consumíveis por pessoa.</div>
+            <div class="input-wrapper">
+              <span class="input-prefix" aria-hidden="true">R$</span>
+              <input 
+                type="number" 
+                id="input-variable-cost" 
+                name="variableCost" 
+                min="0" 
+                step="1" 
+                value="20" 
+                aria-describedby="hint-variable-cost err-variable-cost" 
+                aria-required="true"
+                aria-invalid="false">
+            </div>
+            <div class="field-error" id="err-variable-cost" role="alert">Informe um custo unitário válido.</div>
+          </div>
+
+          <!-- Expectativa de Público / Capacidade -->
+          <div class="form-group">
+            <label for="input-capacity">Expectativa de Público / Capacidade (Participantes)</label>
+            <div class="field-hint" id="hint-capacity">Lotação planejada ou meta de ingressos vendidos para projeção.</div>
+            <input 
+              type="number" 
+              id="input-capacity" 
+              name="capacity" 
+              min="1" 
+              step="10" 
+              value="150" 
+              aria-describedby="hint-capacity err-capacity" 
+              aria-required="true"
+              aria-invalid="false">
+            <div class="field-error" id="err-capacity" role="alert">Informe a capacidade de público planejada.</div>
+          </div>
+
+          <!-- Taxa de Bilheteria / Plataforma -->
+          <div class="form-group">
+            <label for="select-fee-type">Taxa da Plataforma de Venda / Bilheteria</label>
+            <div class="field-hint" id="hint-fee-type">Selecione o preset de comissão ou configure manualmente.</div>
+            <select id="select-fee-type" name="feeType" aria-describedby="hint-fee-type">
+              <option value="sympla" selected>Sympla (10%, mín. R$ 3,99 por ingresso)</option>
+              <option value="ticket-tailor">Ticket Tailor (Taxa fixa R$ 1,50 por ingresso)</option>
+              <option value="none">Sem Taxa / Venda Direta (0%)</option>
+              <option value="custom">Taxa Personalizada (Percentual + Fixo)</option>
+            </select>
+          </div>
+
+          <!-- Configuração de Taxa Personalizada (condicional) -->
+          <div class="custom-fees-container" id="custom-fees-container" aria-live="polite">
+            <div class="form-group">
+              <label for="input-custom-fee-percent">Taxa Percentual (%)</label>
+              <input 
+                type="number" 
+                id="input-custom-fee-percent" 
+                name="customFeePercent" 
+                min="0" 
+                step="0.5" 
+                value="5" 
+                aria-label="Taxa percentual personalizada">
+            </div>
+            <div class="form-group">
+              <label for="input-custom-fee-fixed">Taxa Fixa (R$)</label>
+              <input 
+                type="number" 
+                id="input-custom-fee-fixed" 
+                name="customFeeFixed" 
+                min="0" 
+                step="0.5" 
+                value="1.50" 
+                aria-label="Taxa fixa personalizada por ingresso">
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <!-- Painel Direito: Resultados e Cenários -->
+      <section class="card" aria-labelledby="heading-results">
+        <h2 id="heading-results">Resultados e Análise de Viabilidade</h2>
+
+        <!-- Alerta de Inviabilidade Financeira Unitária -->
+        <div class="alert-infeasible" id="alert-infeasible" role="alert" aria-live="assertive">
+          <strong aria-hidden="true">⚠️</strong>
+          <span id="alert-infeasible-msg">Atenção: A margem de contribuição unitária é menor ou igual a zero. O evento gera prejuízo a cada ingresso vendido.</span>
+        </div>
+
+        <!-- Destaque do Lucro / Prejuízo Líquido -->
+        <div class="financial-result-badge badge-profit" id="res-profit-badge" aria-live="polite">
+          <div>
+            <div class="result-badge-label" id="res-profit-badge-label">Lucro Líquido Projetado</div>
+            <div style="font-size: 0.8rem; opacity: 0.9;">Resultado para a meta de público informada</div>
+          </div>
+          <div class="result-badge-val" id="res-profit-badge-val">R$ 0,00</div>
+        </div>
+
+        <!-- Métricas Principais (Break-Even e Margem Unitária) -->
+        <div class="metrics-overview">
+          <div class="metric-box">
+            <div class="metric-label">Ponto de Equilíbrio (Break-Even)</div>
+            <div class="metric-value" id="res-breakeven-tickets">-- ingressos</div>
+            <div class="metric-sub" id="res-breakeven-percent">--% da capacidade</div>
+          </div>
+
+          <div class="metric-box">
+            <div class="metric-label">Margem de Contribuição Unitária</div>
+            <div class="metric-value" id="res-contribution-margin">R$ 0,00</div>
+            <div class="metric-sub">Sobra líquida por participante para pagar custos fixos</div>
+          </div>
+        </div>
+
+        <!-- Tabela Discriminada de Valores -->
+        <table class="table-details" aria-label="Demonstrativo de Receitas e Despesas Projetadas">
+          <tbody>
+            <tr>
+              <td>Taxa de Bilheteria por Ingresso:</td>
+              <td id="res-ticket-fee">R$ 0,00</td>
+            </tr>
+            <tr>
+              <td>Receita Bruta Total:</td>
+              <td id="res-gross-revenue">R$ 0,00</td>
+            </tr>
+            <tr>
+              <td>Custos Operacionais Totais (Fixos + Variáveis):</td>
+              <td id="res-total-costs">R$ 0,00</td>
+            </tr>
+            <tr>
+              <td>Resultado Líquido Final:</td>
+              <td id="res-net-profit">R$ 0,00</td>
+            </tr>
+            <tr>
+              <td>Margem de Lucro (%):</td>
+              <td id="res-profit-margin">0,0%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Cenários de Sensibilidade -->
+        <div class="scenarios-section">
+          <h3>Matriz de Sensibilidade (Simulação de Riscos)</h3>
+          <div class="scenarios-grid" id="scenarios-grid" aria-live="polite">
+            <!-- Cards de cenários gerados dinamicamente via app.js -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Rodapé e Aviso Legal/Financeiro (Disclaimer) -->
+    <footer class="app-footer" role="contentinfo">
+      <p><strong>Privacidade por Design (LGPD):</strong> Todos os cálculos são processados localmente e com segurança no seu navegador. Nenhum dado financeiro ou informação pessoal é coletado, transmitido ou armazenado em servidores externos.</p>
+      <div class="disclaimer-box">
+        <strong>Aviso Legal e Financeiro:</strong> Esta ferramenta destina-se exclusivamente a simulações analíticas e planejamento orçamentário estimativo para apoio à tomada de decisão de organizadores de eventos. Os resultados apresentados não constituem garantia contratual de faturamento, consultoria financeira, fiscal ou jurídica, e não representam custódia ou intermediação de recursos financeiros.
+      </div>
+    </footer>
+  </div>
+
+  <script src="calculator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

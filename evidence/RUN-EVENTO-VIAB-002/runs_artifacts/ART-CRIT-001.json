@@ -1,0 +1,49 @@
+{
+  "id": "ART-CRIT-001",
+  "run_id": "RUN-EVENTO-VIAB-002",
+  "version": "5.0",
+  "kind": "critical-review",
+  "role": "critical-reviewer",
+  "status": "submitted",
+  "summary": "Revisão crítica e contestação independente da pesquisa de mercado ART-MARKET-001 para viabilidade de ferramenta financeira de eventos. Avalia rigor metodológico, checagem factual das fontes de precificação e bilheteria, lacunas de evidência (demanda empírica como hipótese não comprovada), riscos concorrenciais e conformidade com critérios de integridade e rubrica de discovery.",
+  "input_ids": [
+    "ART-MARKET-001"
+  ],
+  "evidence_refs": [
+    "evidence/RUN-EVENTO-VIAB-002/market-research-notes.md"
+  ],
+  "sections": {
+    "claims_checked": "1. [FATO E1 - Verificado]: Modelos tarifários da Eventbrite (3.7% + US$ 1.79 + 2.9% de processamento), Sympla (10% com mínimo de R$ 3,99 + 2% a 2,5% de processamento; repasse D+3 pós-evento) e Ticket Tailor (pré-pago £0.22 ou pay-as-you-go £0.60 + adquirente) confirmados em suas páginas oficiais de precificação. As plataformas cobram comissão sobre ingressos vendidos e focam na arrecadação transacional, sem módulos de simulação prévia preventiva de viabilidade de custos para o produtor.\n2. [FATO E1 - Verificado]: SwarmTix opera calculadora pública de break-even baseada em Custos Fixos / (Preço - Custo Variável por Participante), comparando taxas em dólar, funcionando estritamente como ferramenta de topo de funil para aquisição de organizadores à sua bilheteria.\n3. [FATO E1 - Verificado]: Templates de planilhas (Smartsheet/Excel) são estáticos e demandam manutenção manual de fórmulas sem cenários automáticos de sensibilidade nem taxas locais brasileiras embutidas.\n4. [HIPÓTESE E0 - Confirmada como não falsificada]: O artefato ART-MARKET-001 não forjou dados empíricos de clientes nem taxas de conversão fictícias, mantendo expressamente o interesse e a disposição a pagar de pequenos organizadores sob o rótulo de HIPÓTESE a ser validada pelo produto.",
+    "conflicts": "Nenhum conflito de interesse detectado: o revisor crítico atua de forma independente do pesquisador de mercado (papéis distintos conforme ROLES e REVIEWERS). No escopo das alegações de mercado, não foram identificadas contradições entre as fontes examinadas: todas as grandes plataformas convergem para a monetização da transação pós-lançamento do evento, deixando a etapa de orçamentação preventiva a cargo de ferramentas de escritório do usuário.",
+    "evidence_gaps": "1. Ausência de validação empírica direta de demanda (Customer Discovery): Não foram realizadas entrevistas com pequenos organizadores reais neste ciclo de pesquisa preliminar. A premissa de que os organizadores abandonarão suas planilhas por um simulador web permanece como HIPÓTESE de risco.\n2. Elasticidade e sensibilidade a taxas: Não há mensuração primária de quanto a taxa das bilheterias (ex: 10% da Sympla) afeta a decisão de cancelamento ou adiamento de eventos no mercado brasileiro.\n3. Essas lacunas foram devidamente delimitadas como incertezas e limitações pelo pesquisador, sendo aceitáveis para o avanço da fase de Discovery com recomendação GO para prototipagem/MVP, mas exigem instrumentação e validação no ciclo seguinte.",
+    "risks": "1. Risco de Adoção e Hábito: Organizadores podem manter o uso de planilhas pela conveniência do hábito, a menos que o MVP entregue geração instantânea e visual de múltiplos cenários de sensibilidade (otimista, realista, pessimista) com esforço zero de configuração.\n2. Risco de Comoditização e Baixa Barreira de Entrada: Ferramentas de cálculo podem ser emuladas por bilheterias ou concorrentes; a retenção dependerá de simplicidade superior, foco local em BRL e clareza analítica.\n3. Risco Regulatório e Jurídico Residual: Manter estritamente o modelo de simulador informativo cliente-side no MVP sem custódia de recebíveis nem cadastro sensível (LGPD/BACEN), acompanhado de disclaimer de responsabilidade financeira.",
+    "verdict": "PASS",
+    "sources": [
+      {
+        "url": "https://www.eventbrite.com/organizer/pricing/",
+        "accessed": "2026-10-11",
+        "claim": "Taxas de serviço da Eventbrite (3.7% + US$ 1.79 + 2.9%) auditadas; confirmação de foco transacional de bilheteria sem simulação preventiva de custos de produção."
+      },
+      {
+        "url": "https://produtores.sympla.com.br/quanto-custa",
+        "accessed": "2026-10-11",
+        "claim": "Taxas de serviço da Sympla (10% com mínimo R$ 3,99 + 2% a 2,5% de processamento; repasse D+3 pós-evento) auditadas; comprovação de ausência de suporte analítico preventivo de risco operacional."
+      },
+      {
+        "url": "https://www.tickettailor.com/pricing",
+        "accessed": "2026-10-11",
+        "claim": "Preços pré-pagos e pay-as-you-go (£0.22 a £0.60 + gateway) auditados; comprovação de terceirização de pagamento sem análise de break-even orçamentário."
+      },
+      {
+        "url": "https://swarmtix.com/tools/event-break-even-calculator",
+        "accessed": "2026-10-11",
+        "claim": "Calculadora SwarmTix auditada; confirmada atuação como isca comercial em dólar para atrair organizadores para a plataforma de ingressos."
+      },
+      {
+        "url": "https://www.smartsheet.com/content/event-planning-templates",
+        "accessed": "2026-10-11",
+        "claim": "Templates manuais estáticos auditados; confirmação de lacuna em automação de cenários de sensibilidade e integração de taxas locais."
+      }
+    ]
+  }
+}

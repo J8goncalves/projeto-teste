@@ -1,0 +1,147 @@
+{
+  "id": "ART-PRD-001",
+  "run_id": "RUN-EVENTO-VIAB-002",
+  "version": "5.0",
+  "kind": "prd",
+  "role": "product-manager",
+  "status": "submitted",
+  "summary": "PRD funcional e estruturado para o MVP da Calculadora de Viabilidade Financeira de Eventos para Pequenos Organizadores. Define histórias INVEST, critérios Given/When/Then testáveis, regras de negócio para break-even e sensibilidade de cenários, arquitetura cliente-side estrita com conformidade LGPD e plano de validação de QA.",
+  "input_ids": [
+    "ART-MARKET-001",
+    "ART-CRIT-001"
+  ],
+  "evidence_refs": [
+    "runs/RUN-EVENTO-VIAB-002/artifacts/ART-MARKET-001.json",
+    "runs/RUN-EVENTO-VIAB-002/artifacts/ART-CRIT-001.json"
+  ],
+  "sections": {
+    "problem": "Pequenos organizadores e produtores independentes de eventos no Brasil frequentemente operam sem planejamento orçamentário adequado, utilizando estimativas empíricas ou planilhas estáticas complexas sujeitas a erros de fórmulas. Essa dinâmica resulta em cancelamentos repentinos, precificação incorreta de ingressos e prejuízos inesperados decorrentes do desconhecimento do ponto de equilíbrio (break-even), da margem de segurança e do impacto erosivo das taxas das ticketeiras (comissões percentuais com valores mínimos por ingresso) e dos custos variáveis por participante (como kits, credenciamento, alimentos e bebidas).",
+    "scope": "O MVP compreende uma aplicação web cliente-side responsiva, limpa e acessível que oferece: (1) Painel de Entrada de Parâmetros Financeiros: Custos Fixos Totais (aluguel, som, iluminação, equipe base), Custos Variáveis por Participante (alimentação, material, consumíveis), Preço Pretendido de Venda do Ingresso e Expectativa de Público/Capacidade Máxima; (2) Parametrização Flexível de Taxas de Bilheteria: Presets de mercado brasileiros e globais (Sympla: 10% com piso de R$ 3,99; Ticket Tailor: taxa fixa equivalente; Sem Taxa/Venda Direta) e opção de Taxa Personalizada (percentual + valor fixo); (3) Motor de Cálculo Dinâmico em Tempo Real: Apuração instantânea da Margem de Contribuição Unitária, Ponto de Equilíbrio em Ingressos (Break-Even arredondado para cima) e em Receita Mínima, e Projeção de Faturamento Bruto, Custos Totais e Lucro/Prejuízo Líquido com respectiva margem percentual; (4) Simulador Automático de Sensibilidade: Matriz de 3 cenários comparativos automáticos (Pessimista em 50% da meta, Realista em 100% e Otimista em 120%); (5) Garantia de Privacidade e Desempenho Local: Arquitetura 100% executada no navegador do usuário sem necessidade de cadastro, autenticação ou gravação remota; (6) Disclaimer Jurídico/Financeiro explícito no rodapé comunicando a natureza estritamente simulada e orientativa do modelo.",
+    "out_of_scope": "Estão expressamente fora do escopo deste MVP: (1) Processamento, liquidação ou intermediação de pagamentos (sem checkout, cartão de crédito, PIX ou boletos); (2) Emissão, geração de QR Code ou validação de ingressos na portaria; (3) Gestão de contas de usuários, autenticação, login social ou armazenamento em banco de dados em nuvem; (4) Integração via API ao vivo com bilheterias ou instituições bancárias sob regulação BACEN; (5) Múltiplos lotes com datas de virada automática (o MVP opera com preço médio praticado/ponderado por lote informado pelo produtor); (6) Funcionalidades complexas de contabilidade fiscal/tributária e emissão de notas fiscais.",
+    "stories": [
+      {
+        "id": "US-001",
+        "as_a": "pequeno organizador de eventos",
+        "i_want": "informar custos fixos totais, custos variáveis por participante e preço médio do ingresso com parametrização de taxa da bilheteria",
+        "so_that": "eu descubra imediatamente o ponto de equilíbrio (break-even) em quantidade de ingressos necessários para cobrir os custos sem ter prejuízo",
+        "acceptance_ids": [
+          "AC-001",
+          "AC-002",
+          "AC-003"
+        ]
+      },
+      {
+        "id": "US-002",
+        "as_a": "produtor independente de eventos",
+        "i_want": "informar a capacidade total planejada ou expectativa de público",
+        "so_that": "eu visualize a receita bruta projetada, receita líquida pós-taxas e margem de lucro projetada (em R$ e percentual)",
+        "acceptance_ids": [
+          "AC-004",
+          "AC-005"
+        ]
+      },
+      {
+        "id": "US-003",
+        "as_a": "organizador planejando riscos operacionais",
+        "i_want": "visualizar simulações automáticas de três cenários de sensibilidade (Pessimista 50%, Realista 100%, Otimista 120% da meta de público)",
+        "so_that": "eu antecipe o impacto financeiro e o risco de prejuízo se as vendas ficarem abaixo do esperado",
+        "acceptance_ids": [
+          "AC-006",
+          "AC-007"
+        ]
+      },
+      {
+        "id": "US-004",
+        "as_a": "organizador comparando canais de venda",
+        "i_want": "selecionar presets de taxas de plataformas populares (Sympla, Ticket Tailor) ou definir taxa personalizada percentual e/ou fixa por ingresso",
+        "so_that": "eu entenda com precisão o impacto real das comissões na minha margem final",
+        "acceptance_ids": [
+          "AC-008",
+          "AC-009"
+        ]
+      },
+      {
+        "id": "US-005",
+        "as_a": "usuário consciente de privacidade e segurança",
+        "i_want": "utilizar a calculadora sem necessidade de cadastro, login ou envio de dados financeiros a servidores remotos",
+        "so_that": "meus dados operacionais permaneçam estritamente no meu navegador em conformidade total com a LGPD",
+        "acceptance_ids": [
+          "AC-010",
+          "AC-011"
+        ]
+      }
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "AC-001",
+        "given": "que o organizador acessa a calculadora com custos fixos de R$ 5.000,00, custo variável por participante de R$ 20,00 e preço do ingresso de R$ 70,00 sem taxa de bilheteria",
+        "when": "os valores são processados pelo motor de cálculo",
+        "then": "o ponto de equilíbrio exibido deve ser exatamente 100 ingressos (Margem de Contribuição unitária = R$ 50,00; Break-Even = 5000 / 50)"
+      },
+      {
+        "id": "AC-002",
+        "given": "que o preço do ingresso seja menor ou igual à soma dos custos variáveis unitários e taxas (Margem de Contribuição <= 0)",
+        "when": "o organizador insere valores com contribuição unitária não positiva (ex: Preço R$ 20, Custo Variável R$ 25)",
+        "then": "a aplicação deve exibir um alerta visual informativo indicando inviabilidade financeira unitária (Margem de Contribuição negativa/nula) sem travar ou gerar divisão por zero / NaN / Infinity"
+      },
+      {
+        "id": "AC-003",
+        "given": "que o organizador insere campos numéricos com valores negativos ou caracteres inválidos",
+        "when": "os dados são validados pelos campos de entrada",
+        "then": "a interface deve impedir valores negativos, sanitizar a entrada e exibir mensagens de validação acessíveis via atributos ARIA"
+      },
+      {
+        "id": "AC-004",
+        "given": "que o organizador define uma capacidade estimada de 200 ingressos a R$ 100,00, custos fixos de R$ 4.000,00 e custo variável de R$ 20,00 sem taxa",
+        "when": "a projeção é calculada",
+        "then": "a interface deve exibir Receita Bruta de R$ 20.000,00, Custo Total de R$ 8.000,00, Lucro Líquido Projetado de R$ 12.000,00 e Margem de Lucro de 60,0%"
+      },
+      {
+        "id": "AC-005",
+        "given": "que o número de ingressos da meta seja inferior ao ponto de equilíbrio calculado",
+        "when": "os resultados da projeção são renderizados",
+        "then": "a interface deve destacar o prejuízo estimado em vermelho com indicador claro de déficit operacional e margem percentual negativa"
+      },
+      {
+        "id": "AC-006",
+        "given": "que a meta informada é de 100 ingressos com receita líquida e custos definidos",
+        "when": "a tabela/painel de cenários é gerada automaticamente",
+        "then": "devem ser exibidos três cenários comparativos: Pessimista (50 ingressos), Realista (100 ingressos) e Otimista (120 ingressos), detalhando receita bruta, custos totais, resultado líquido e status de viabilidade para cada um"
+      },
+      {
+        "id": "AC-007",
+        "given": "que o organizador altera qualquer parâmetro de custo ou meta em tempo real",
+        "when": "o evento de alteração (input/change) ocorre",
+        "then": "os três cenários de sensibilidade devem ser recalculados dinamicamente em menos de 100ms sem necessidade de recarregar a página"
+      },
+      {
+        "id": "AC-008",
+        "given": "que o organizador seleciona o preset 'Sympla (10%, mín. R$ 3,99)' para um ingresso de R$ 30,00",
+        "when": "a taxa de bilheteria é calculada",
+        "then": "a taxa unitária deduzida deve ser R$ 3,99 (pois 10% de R$ 30,00 é R$ 3,00, abaixo do piso de R$ 3,99), refletindo a margem de contribuição correta"
+      },
+      {
+        "id": "AC-009",
+        "given": "que o organizador seleciona o modo de 'Taxa Personalizada'",
+        "when": "informa 5% de taxa percentual e R$ 1,50 de taxa fixa por ingresso",
+        "then": "o cálculo de taxa total por ingresso deve compor exatamente a parcela percentual sobre o preço de venda somada ao valor fixo unitário"
+      },
+      {
+        "id": "AC-010",
+        "given": "que o usuário utiliza a aplicação em qualquer navegador moderno (Chrome/Firefox/Safari/Edge)",
+        "when": "a página é carregada e executada",
+        "then": "todo o processamento matemático ocorre 100% no cliente (JavaScript puro no DOM), nenhuma requisição de telemetria externa, tracking, analytics de terceiros ou gravação em banco de dados remoto é disparada"
+      },
+      {
+        "id": "AC-011",
+        "given": "que a página é renderizada",
+        "when": "o usuário inspeciona o rodapé e a área de resultados",
+        "then": "um aviso legal e financeiro explícito (disclaimer) deve estar visível e legível, esclarecendo que os cálculos são simulações analíticas estimadas e não constituem assessoria financeira formal ou garantia de faturamento"
+      }
+    ],
+    "business_rules": "1. Fórmulas de Cálculo Financeiro: (a) Taxa Bilheteria Unitária (T) = se preset Sympla: max(Preço * 0.10, 3.99); se preset Ticket Tailor: valor fixo equivalente (~R$ 4,50 / £0.60); se personalizada: (Preço * percentual) + fixo; se sem taxa: 0. (b) Margem de Contribuição Unitária (MC) = Preço do Ingresso - Custo Variável por Participante - Taxa Bilheteria Unitária. (c) Ponto de Equilíbrio em Ingressos (Break-Even) = se MC <= 0: Inviável (alerta); senão: Math.ceil(Custos Fixos Totais / MC), pois não se comercializa fração de ingresso. (d) Receita Bruta = Ingressos Vendidos * Preço. (e) Custo Total = Custos Fixos Totais + (Ingressos Vendidos * (Custo Variável + Taxa Bilheteria)). (f) Resultado Líquido = Receita Bruta - Custo Total. (g) Margem de Lucro = se Receita Bruta > 0: (Resultado Líquido / Receita Bruta) * 100; senão: 0%. 2. Cenários de Sensibilidade: A meta informada de público (N) gera 3 cenários automáticos: Pessimista = Math.floor(N * 0.50), Realista = N, Otimista = Math.floor(N * 1.20). 3. Restrições e Limites: Todos os campos numéricos devem aceitar valores >= 0; valores negativos devem ser rejeitados; divisões por zero devem retornar mensagem amigável sem quebrar o layout.",
+    "security": "1. Princípio da Minimização de Dados (LGPD Art. 6º, III): A aplicação opera no paradigma 'zero-data-retention'. Nenhum dado pessoal identificável (PII), financeiro ou de contato é solicitado, armazenado ou transmitido a servidores externos. 2. Isolamento de Execução: Código JavaScript estático client-side executado no sandbox do navegador do usuário sem scripts de rastreamento de terceiros, sem dependências dinâmicas não auditadas e sem chamadas a APIs externas não autorizadas. 3. Content Security Policy (CSP): Política estrita de recursos locais impedindo injeção de scripts (XSS). 4. Sanitização de DOM: Manipulação segura do DOM evitando 'innerHTML' com entradas arbitrárias de usuário.",
+    "test_plan": "1. Testes de Unidade (Engine Financeira): Verificação das fórmulas matemáticas com casos limítrofes (margem negativa, custo fixo zero, taxa mínima maior que comissão percentual, arredondamento ceiling para break-even, cenários fracionários). 2. Testes de Integração e UI Interativa (Eixo 2): Simulação real em navegador via Chrome DevTools / Playwright testando preenchimento de formulário, clique em presets, renderização instantânea dos cenários e validação dos elementos na tela. 3. Testes de Acessibilidade (WCAG 2.2 AA): Inspeção de contraste de cores nos cards de resultado (especialmente indicadores verde/vermelho), navegação completa por teclado (Tab/Enter) e presença de labels semânticos e atributos ARIA nos campos de entrada e alertas de erro.",
+    "risks": "1. Risco de Compreensão Financeira: O usuário pode confundir Margem de Contribuição com Margem de Lucro Bruta. Mitigação: Inclusão de tooltips explicativos breves e visualização discriminada dos custos unitários vs totais. 2. Risco de Variação de Taxas pelas Bilheterias: As plataformas podem alterar suas políticas comerciais (ex: reajuste de taxas mínimas). Mitigação: Disponibilização da opção de taxa personalizada para garantir a perenidade da ferramenta independente de mudanças externas. 3. Risco Jurídico de Responsabilidade por Decisões do Organizador: O organizador tomar decisões precipitadas baseadas na simulação. Mitigação: Posicionamento proeminente do disclaimer de simulação informativa no rodapé e junto ao resumo dos resultados."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "ART-INTAKE-001",
+  "run_id": "RUN-EVENTO-VIAB-002",
+  "version": "5.0",
+  "kind": "intake",
+  "role": "orchestrator",
+  "status": "submitted",
+  "summary": "Demanda humana: avaliar a oportunidade de uma ferramenta digital que ajude pequenos organizadores de eventos a calcular a viabilidade financeira de um evento antes de investir; se a oportunidade se justificar, construir uma primeira versao funcional testavel. Sem merge em main nem publicacao em producao sem autorizacao humana. Relatorio auditavel obrigatorio ao final.",
+  "input_ids": [],
+  "evidence_refs": [
+    "evidence/RUN-EVENTO-VIAB-002/baseline-tests.txt",
+    "evidence/RUN-EVENTO-VIAB-002/memory-status.txt",
+    "evidence/RUN-EVENTO-VIAB-002/memory-brief-orchestrator.txt",
+    "evidence/RUN-EVENTO-VIAB-002/ledger.md"
+  ],
+  "sections": {
+    "goal": "Decidir com evidencia se vale construir uma calculadora de viabilidade financeira de eventos para pequenos organizadores (break-even, margem, cenarios de publico/preco) e, se sim, entregar um MVP funcional testavel (UI real, testes, QA em navegador, security scan).",
+    "scope": "Dentro: pesquisa de mercado com benchmark de concorrentes/alternativas com fontes verificaveis; revisao critica independente; PRD com Given/When/Then; arquitetura simples; implementacao e testes SOMENTE depois do gate humano BUILD; QA/Security reais; relatorio de execucao auditavel. Fora: deploy/producao, merge em main, integracao de pagamento, backend multiusuario/contas, dados pessoais reais, gasto financeiro.",
+    "constraints": "Sem merge em main nem producao sem autorizacao humana. Gate humano obrigatorio para BUILD, RELEASE, CLOSED e MEMORY_WRITE, verificado via comentario GitHub (GITHUB_TOKEN ausente neste ambiente -> gate nao pode ser satisfeito pelo agente). Aceite de artefatos criticos (build, qa-report, security-report, implementation-review, release) exige identidade de revisor VERIFIED por runner autoridade; ambiente atual sem runner autoridade -> tende a UNVERIFIED -> fail-closed. Sem estimativas numericas inventadas; premissas empiricas sao hipoteses. Dados nao medidos devem ser declarados como nao medidos. Branch de trabalho: feature/*, nunca main direto.",
+    "risk_level": "Nivel 2 (produto novo, sem dados pessoais, sem custo, sem producao). Mode de workflow: PRODUCT_DISCOVERY porque a oportunidade ainda nao esta validada; ENGINEERING_SMALL foi descartado por pular pesquisa de mercado e revisao critica. Run RUN-EVENTO-VIAB-001 criada por engano com modo default ENGINEERING_SMALL foi abandonada sem artefatos (erro de orquestracao registrado no ledger).",
+    "definition_of_success": "(1) Pesquisa de mercado com fontes URL+data+alegacao aceita por Critical Reviewer independente com decisao go/no-go justificada; (2) PRD com US/AC rastreaveis revisado por papel independente; (3) arquitetura simples revisada; (4) pausa explicita no gate BUILD aguardando aprovacao humana externa; (5) se aprovado, MVP com testes unitarios reais, QA em navegador real e scan de seguranca reais; (6) relatorio final que distingue agentes executados de apenas mencionados e marca dados nao medidos.",
+    "workflow_choice": "PRODUCT_DISCOVERY (DISCOVERY[intake] -> PLANNING[market-research, critical-review] -> DESIGN[prd] -> BUILD[architecture + aprovacao humana] -> VERIFY[build] -> RELEASE[qa, security, impl-review] -> LEARN[release]).",
+    "planned_roles": "orchestrator (intake); critical-reviewer (revisa intake e market-research); market-researcher (market-research); product-manager (prd); qa ou architect (revisa prd); architect (architecture); security-reviewer ou implementation-reviewer (revisa architecture). Pos-gate BUILD: developer, qa, security-reviewer, implementation-reviewer. Nao previstos por falta de necessidade: ceo, customer-researcher, product-strategist, marketing-strategist, legal-compliance (sem dados pessoais nesta fase; reavaliar se MVP persistir dados), experiment-designer, data-analytics, devops-finops, release-manager (sem release), memory-curator (MEMORY_WRITE exige humano).",
+    "known_limitations": "Memoria: memory-status primeiro retornou DENIED (exit 2) as 01:03:41 e depois connected=true (exit 0) as 01:04:18; causa da variacao nao investigada. memory-brief retornou lista vazia. Tokens e custo por agente: nenhuma interface do ambiente expoe esses valores ao orquestrador -> NAO MEDIDO."
+  }
+}

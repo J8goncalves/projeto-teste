@@ -1,0 +1,172 @@
+{
+  "id": "ART-QA-001",
+  "run_id": "RUN-EVENTO-VIAB-002",
+  "version": "5.0",
+  "kind": "qa-report",
+  "role": "qa",
+  "status": "submitted",
+  "summary": "Relatório de Qualidade E2E e testes interativos reais em navegador Chrome via Chrome DevTools para a Calculadora de Viabilidade Financeira de Eventos (MVP). Validação integral dos critérios de aceitação AC-001 a AC-011 em ambiente HTTP local real com registro de interações no DOM, estados observados, inspeção de console e rede.",
+  "input_ids": [
+    "ART-BUILD-001"
+  ],
+  "evidence_refs": [
+    "evidence/RUN-EVENTO-VIAB-002/qa-execution.log",
+    "evidence/RUN-EVENTO-VIAB-002/qa_baseline.png",
+    "evidence/RUN-EVENTO-VIAB-002/qa_final_state.png"
+  ],
+  "verdict": "PASS",
+  "execution": {
+    "real_execution": true,
+    "command": ".\\.venv\\Scripts\\python.exe tests\\run_interactive_browser_qa.py",
+    "exit_code": 0,
+    "output_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log",
+    "tool": "Chrome DevTools MCP / Chromium",
+    "version": "1.0.0",
+    "started_at": "2026-10-11T04:36:30Z",
+    "finished_at": "2026-10-11T04:40:15Z",
+    "environment": "Windows 11 / Node v22.14.0 / Python 3.14.8 / Chrome DevTools",
+    "commit_sha": "189cb1f63a43cd84942377df4c06355f62c96a98",
+    "output_sha256": "145c5142cd5284334e7032a9b6f5edee9240638c6a406ee70205b8667180e9c6"
+  },
+  "sections": {
+    "acceptance_mapping": [
+      {
+        "id": "AC-001",
+        "description": "Ponto de equilíbrio nominal com 5000 fixo, 70 preco, 20 var e sem taxa -> 100 ingressos",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-002",
+        "description": "Borda de inviabilidade unitária (Preço <= Custos + Taxa) com alerta visual e sem NaN/Infinity",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-003",
+        "description": "Sanitização de valores negativos e caracteres inválidos com acessibilidade ARIA",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-004",
+        "description": "Projeção de 200 ingressos a R$ 100 -> Receita R$ 20.000, Custos R$ 8.000, Lucro R$ 12.000 (60%)",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-005",
+        "description": "Alerta em vermelho e indicador claro de déficit operacional quando meta < break-even",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-006",
+        "description": "Matriz de 3 cenários de sensibilidade (Pessimista 50%, Realista 100%, Otimista 120%)",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-007",
+        "description": "Reatividade e recálculo instantâneo em tempo real (< 100ms)",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-008",
+        "description": "Regra de piso da bilheteria Sympla com max(10%, R$ 3,99) para ingresso de R$ 30,00",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-009",
+        "description": "Parametrização de taxa personalizada com percentual + fixo",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-010",
+        "description": "Processamento 100% no cliente sem chamadas de rede externas ou tracking (LGPD)",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "id": "AC-011",
+        "description": "Disclaimer jurídico e financeiro explícito, visível e legível no rodapé",
+        "status": "PASS",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      }
+    ],
+    "environment": "Servidor HTTP local Python (porta 8085) servindo arquivos estáticos de `src/`. Navegador real Chromium controlado via Chrome DevTools MCP. Sistema Operacional Windows 11. Resolução viewport padrão desktop com árvore de acessibilidade inspecionada.",
+    "method": "browser-interactive",
+    "interactions": [
+      {
+        "target": "select#select-fee-type",
+        "action": "change para 'none' mantendo fixos 5000, preco 70, variavel 20",
+        "expected": "Break-even de 100 ingressos e Margem de Contribuição de R$ 50,00",
+        "observed": "Break-even exibiu exatamente '100 ingressos' e MC 'R$ 50,00'",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "target": "input#input-ticket-price & input#input-variable-cost",
+        "action": "input de preco=20 e variavel=25",
+        "expected": "Exibição de alerta de inviabilidade financeira unitária, sem travamento ou NaN/Infinity",
+        "observed": "Elemento #alert-infeasible tornou-se visível com texto explicativo e break-even 'Inviável'",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "target": "input#input-fixed-costs",
+        "action": "input de valor negativo '-500'",
+        "expected": "Campo marcado com aria-invalid='true' e mensagem de erro acessível exibida",
+        "observed": "Atributo aria-invalid='true' ativado e mensagem #err-fixed-costs visível no DOM",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "target": "input#input-capacity",
+        "action": "input de 200 ingressos com preco 100, fixo 4000, variavel 20 sem taxa",
+        "expected": "Receita R$ 20.000,00, Custos R$ 8.000,00, Lucro R$ 12.000,00 e Margem 60%",
+        "observed": "Receita Bruta R$ 20.000,00, Custo Total R$ 8.000,00, Lucro Líquido R$ 12.000,00 e Margem 60% renderizados",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "target": "input#input-capacity",
+        "action": "input de meta de 50 ingressos (< break-even de 100 ingressos)",
+        "expected": "Badge em vermelho com indicador de déficit e margem negativa",
+        "observed": "Badge #res-profit-badge recebeu classe .badge-loss exibindo Prejuízo Operacional de -R$ 2.500,00 (-71,4%)",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "target": "#scenarios-grid",
+        "action": "definição de meta de 100 ingressos e leitura dos cards de cenários gerados",
+        "expected": "3 cards de cenários: Pessimista (50 ingressos), Realista (100 ingressos), Otimista (120 ingressos)",
+        "observed": "3 cards renderizados com detalhes de receita, custos e resultado líquido para 50, 100 e 120 ingressos",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "target": "input#input-capacity",
+        "action": "alteração de capacidade com medição de latência via performance.now()",
+        "expected": "Recálculo reativo da interface em menos de 100ms sem reload da página",
+        "observed": "DOM recalculado em 0.60ms com atualização instantânea de todos os cards",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "target": "select#select-fee-type & input#input-ticket-price",
+        "action": "seleção do preset 'sympla' com preco R$ 30,00",
+        "expected": "Taxa unitária de R$ 3,99 (piso Sympla) em vez de R$ 3,00 (10%)",
+        "observed": "Taxa de bilheteria exibida como R$ 3,99 e MC correspondente a R$ 16,01",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      },
+      {
+        "target": "select#select-fee-type & inputs de taxa personalizada",
+        "action": "seleção de 'custom', percentual 5% e fixo R$ 1,50 com preco R$ 100,00",
+        "expected": "Taxa unitária calculada em R$ 6,50",
+        "observed": "Container de taxa personalizada exibido e taxa unitária calculada exatamente em R$ 6,50",
+        "evidence_ref": "evidence/RUN-EVENTO-VIAB-002/qa-execution.log"
+      }
+    ],
+    "observations": "A aplicação demonstra estabilidade e robustez matemática em todas as interações. A arquitetura desacoplada de `calculator.js` garante que a manipulação de DOM via `app.js` ocorra sem efeito colateral ou overhead de performance. A experiência de usuário é fluida, com recálculo abaixo de 1 milissegundo e feedback visual imediato de lucro/prejuízo e inviabilidade unitária.",
+    "console": "Console DevTools inspecionado: zero erros de JavaScript durante a execução de todos os fluxos e eventos de formulário. Foram observados apenas avisos de infraestrutura HTTP sobre meta CSP ('frame-ancestors' ignorado em meta) e 404 em favicon.ico, sem impacto funcional.",
+    "evidence": "Evidências salvas e registradas: log de execução `evidence/RUN-EVENTO-VIAB-002/qa-execution.log` (SHA-256: 145c5142cd5284334e7032a9b6f5edee9240638c6a406ee70205b8667180e9c6), captura de tela inicial `evidence/RUN-EVENTO-VIAB-002/qa_baseline.png` e captura de tela final interativa `evidence/RUN-EVENTO-VIAB-002/qa_final_state.png`.",
+    "limitations": "Os testes interativos foram realizados em resolução de tela padrão desktop e navegador Chromium. Testes em navegadores legados (ex: Internet Explorer) estão fora do escopo conforme PRD."
+  }
+}

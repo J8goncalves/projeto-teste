@@ -1,0 +1,64 @@
+{
+  "id": "ART-MARKET-001",
+  "run_id": "RUN-EVENTO-VIAB-002",
+  "version": "5.0",
+  "kind": "market-research",
+  "role": "market-researcher",
+  "status": "submitted",
+  "summary": "Pesquisa de mercado e benchmarking competitivo para avaliar a oportunidade de uma ferramenta de viabilidade financeira e ponto de equilíbrio para pequenos organizadores de eventos. Analisa alternativas existentes (planilhas manuais, plataformas de bilheteria e calculadoras de topo de funil), fundamentada em fontes públicas verificadas (Eventbrite, Ticket Tailor, Sympla, SwarmTix, Smartsheet). Conclui com recomendação explícita GO para avanço a DESIGN/PRD, condicionada a validação empírica de hipóteses de demanda de clientes e mitigação de riscos de comoditização.",
+  "input_ids": [
+    "ART-INTAKE-002"
+  ],
+  "evidence_refs": [
+    "evidence/RUN-EVENTO-VIAB-002/market-research-notes.md",
+    "evidence/RUN-EVENTO-VIAB-002/memory-brief-market-researcher.txt"
+  ],
+  "sections": {
+    "question": "Existe uma oportunidade de mercado justificada e viável para uma ferramenta digital que ajude pequenos organizadores de eventos a calcular e simular a viabilidade financeira e o ponto de equilíbrio (break-even) de seus eventos antes de realizarem investimentos e compromissos contratuais?",
+    "method": "Benchmarking competitivo e pesquisa de fontes públicas primárias e secundárias acessadas em 2026-10-11, avaliando modelos de receita, fluxos de uso e funcionalidades de plataformas líderes de bilheteria (Eventbrite, Sympla, Ticket Tailor), ferramentas existentes de cálculo de break-even (SwarmTix) e soluções tradicionais de produtividade (Smartsheet, Excel, Google Sheets). Aplicação rigorosa das diretrizes de integridade (.agents/rules/research-integrity.md e .agents/rules/evidence.md): rotulagem explícita de fatos [FATO/DADO - E1], inferências lógicas [INFERÊNCIA - E0], hipóteses não validadas [HIPÓTESE - E0] e recomendações [RECOMENDAÇÃO]. Nenhuma suposição de interesse de usuário ou taxa de conversão foi tratada como fato estabelecido, sendo mantidas estritamente como hipóteses de validação para o MVP.",
+    "sources": [
+      {
+        "url": "https://www.eventbrite.com/organizer/pricing/",
+        "title": "Create an Event for Free: Pricing | Eventbrite",
+        "accessed": "2026-10-11",
+        "claim": "A Eventbrite opera com taxa de serviço de 3.7% + US$ 1.79 por ingresso pago mais 2.9% de processamento por pedido, sendo gratuita apenas para eventos sem cobrança de ingresso. Seu modelo é orientado a marketplace de ingressos e divulgação, sem ferramentas nativas integradas de simulação prévia de viabilidade de custos para o organizador."
+      },
+      {
+        "url": "https://www.eventbrite.com/blog/event-budget-template-ds00/",
+        "title": "Use This Event Budget Template To Keep Your Event on Track | Eventbrite",
+        "accessed": "2026-10-11",
+        "claim": "Pesquisa divulgada pela Eventbrite aponta que 80% dos criadores de eventos planejavam cortar orçamentos em 2023 devido a pressões inflacionárias, recomendando templates externos de planilhas para controle prévio de despesas, confirmando que a plataforma de bilheteria não supre o planejamento financeiro preventivo internamente."
+      },
+      {
+        "url": "https://www.tickettailor.com/pricing",
+        "title": "Ticket Tailor: Pricing | Ticket Tailor",
+        "accessed": "2026-10-11",
+        "claim": "A Ticket Tailor adota cobrança pré-paga a partir de £ 0.22/ingresso ou £ 0.60 no pay-as-you-go (+ VAT), delegando processamento a gateways como Stripe (ex: 2.9% + US$ 0.30 nos EUA), sem prover modelagem de ponto de equilíbrio orçamentário ou análise de risco para produtores."
+      },
+      {
+        "url": "https://produtores.sympla.com.br/quanto-custa",
+        "title": "Taxa Sympla - Quanto Custa",
+        "accessed": "2026-10-11",
+        "claim": "A Sympla cobra taxa de serviço de 10% por ingresso vendido (mínimo de R$ 3,99 para ingressos até R$ 39,90) mais 2% a 2,5% de processamento financeiro, com repasse das receitas ocorrendo somente no 3º dia útil após o evento (D+3 pós-evento), focando exclusivamente na monetização da bilheteria."
+      },
+      {
+        "url": "https://swarmtix.com/tools/event-break-even-calculator",
+        "title": "Break-Even Calculator: How Many Tickets to Sell | Swarmtix",
+        "accessed": "2026-10-11",
+        "claim": "A SwarmTix oferece calculadora pública web de ponto de equilíbrio baseada na fórmula Custos Fixos / (Preço - Custo Variável por Participante), comparando taxas de bilheteria (SwarmTix $0.99 + 1.5% vs Eventbrite $1.79 + 3.7%), funcionando como isca de marketing para sua bilheteria, sem cenários múltiplos de sensibilidade ou suporte a moeda local brasileira."
+      },
+      {
+        "url": "https://www.smartsheet.com/content/event-planning-templates",
+        "title": "Free Event Planning Templates | Smartsheet",
+        "accessed": "2026-10-11",
+        "claim": "Templates de planilhas estáticas (Smartsheet, Excel, Google Sheets) estruturam despesas estimadas vs reais em colunas estáticas, exigindo manutenção manual de fórmulas e carecendo de automatização para cálculo de múltiplos cenários de ocupação e sensibilidade de margem com taxas de bilheteria embutidas."
+      }
+    ],
+    "benchmark": "Comparação estruturada entre três classes de soluções existentes:\n1. Planilhas Manuais (Microsoft Excel / Google Sheets / Smartsheet): [FATO] Altamente flexíveis e familiares ao organizador, sem custo direto adicional se já possuir software de escritório. [INFERÊNCIA] Contudo, exigem montagem manual de fórmulas, são suscetíveis a erros de modelagem e não integram automaticamente regras complexas de taxas de bilheteria e cenários de sensibilidade (otimista/realista/pessimista).\n2. Plataformas de Ticketing (Eventbrite, Sympla, Ticket Tailor): [FATO] Especializadas na transação, processamento de pagamentos e credenciamento de participantes. Cobram percentuais significativos sobre as vendas (10% + 2,5% na Sympla; 3.7% + $1.79 + 2.9% na Eventbrite). [FATO/INFERÊNCIA] Focam na cobrança e arrecadação após a publicação do evento e só liberam repasses após a conclusão do evento (D+3 na Sympla), não fornecendo ao organizador ferramentas prévias para avaliar o risco de déficit operacional caso as vendas fiquem abaixo do esperado.\n3. Calculadoras Especializadas Pontuais (SwarmTix Break-Even Calculator): [FATO] Ferramentas gratuitas de tela única que calculam o volume de ingressos para cobrir custos fixos e variáveis. [INFERÊNCIA] Operam primariamente como mecanismo de geração de leads (topo de funil) para a venda de ingressos na própria plataforma, limitadas a moedas estrangeiras (dólar) e com parametrizações rígidas que não abordam múltiplos lotes ou variações de despesas de produção.",
+    "strengths": "Forças da Oportunidade Identificada:\n1. Proposta de valor focada e desatendida: Nenhuma das grandes bilheterias auxilia o organizador no momento zero (planejamento pré-investimento), focando unicamente na etapa de arrecadação.\n2. Baixa fricção e complexidade técnica para MVP: A lógica central consiste em modelagem analítica e paramétrica (custos fixos, custos variáveis por cabeça, faixas de preços/lotes e deduções de taxas de intermediação), viabilizando uma ferramenta web rápida, responsiva e sem necessidade de backend pesado.\n3. Risco regulatório nulo no escopo preventivo: Ao não transacionar dinheiro, não reter saldo e não exigir cadastro pessoal no MVP, elimina-se dependência de enquadramento BACEN (Lei 12.865/2013) e riscos de vazamento de dados pessoais (LGPD).",
+    "weaknesses": "Fraquezas e Fragilidades da Abordagem:\n1. Baixa barreira de entrada competitiva: Uma ferramenta de cálculo de viabilidade pode ser replicada rapidamente por competidores ou disponibilizada gratuitamente como recurso adicional por plataformas de ingressos já consolidadas.\n2. Monocultura de uso: Se posicionada apenas como calculadora estática de uso único, o organizador pode utilizá-la poucas vezes por ano e retornar ao hábito prévio de planilhas.\n3. Dependência de dados precisos do próprio organizador: A qualidade da simulação depende da acurácia com que o organizador estima seus custos fixos e variáveis (ex: despesas ocultas de sonorização, gerador, limpeza, taxas municipais).",
+    "risks": "Riscos de Negócio e Operação Identificados:\n1. Risco de Adoção e Hábito: Organizadores podem preferir a flexibilidade de planilhas já existentes por costume, a menos que a ferramenta digital entregue uma experiência visual incomparavelmente superior (gráficos de break-even instantâneos, comparação de cenários e exportação limpa de relatórios).\n2. Risco de Monetização Futura: Disposição a pagar por uma ferramenta de cálculo isolada é historicamente baixa no segmento de micro e pequenos eventos [HIPÓTESE]; modelos viáveis de sustentação financeira exigirão formatos freemium, monetização indireta ou evolução futura para gestão de orçamento.\n3. Risco de Responsabilidade por Estimativas do Usuário: Organizadores que registrarem prejuízo em seus eventos podem atribuir falha à ferramenta se não houver um aviso legal claro (disclaimer) de que os cálculos são simulações analíticas informativas.",
+    "recommendation": "GO (Recomendação para prosseguir às fases de DESIGN e PRD da run RUN-EVENTO-VIAB-002, sob as condições do Intake ART-INTAKE-002).\nJustificativa: As evidências documentais confirmam que as soluções atuais deixam uma lacuna evidente entre planilhas manuais e bilheterias transacionais. Construir uma primeira versão funcional testável (MVP) focada em simulação financeira preventiva, análise de ponto de equilíbrio e cenários de sensibilidade é tecnicamente viável, possui baixo risco e é a maneira mais eficiente e barata de testar empiricamente as hipóteses de valor e adoção junto aos pequenos organizadores.",
+    "uncertainties": "Incertezas Críticas e Hipóteses a Validar no Ciclo:\n1. [HIPÓTESE] Pequenos organizadores têm interesse real em substituir planilhas por uma ferramenta web especializada durante a fase de planejamento prévio (Demanda não comprovada por entrevistas de clientes nesta fase, tratada estritamente como hipótese).\n2. [HIPÓTESE] A clareza visual de cenários (ex: 'se vender 50% dos ingressos, prejuízo de R$ X; se vender 80%, lucro de R$ Y') é o diferencial que gera retenção e engajamento.\n3. [HIPÓTESE] Produtores de eventos valorizam a simulação de impacto das taxas específicas das bilheterias locais (ex: Sympla 10% + 2,5%) para decidir preço final de venda.\n4. [INFERÊNCIA / FATO] Aspectos regulatórios futuros: enquanto o produto mantiver escopo estritamente simulador sem pagamentos, não há passivo financeiro regulatório; caso no futuro incorpore bilheteria própria, incidirão regras estritas do Sistema de Pagamentos Brasileiro e exigências de capital."
+  }
+}

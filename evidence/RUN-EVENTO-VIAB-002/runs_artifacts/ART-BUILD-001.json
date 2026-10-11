@@ -1,0 +1,25 @@
+{
+  "id": "ART-BUILD-001",
+  "run_id": "RUN-EVENTO-VIAB-002",
+  "version": "5.0",
+  "kind": "build",
+  "role": "developer",
+  "status": "submitted",
+  "summary": "Implementação completa da primeira versão funcional (MVP) da Calculadora de Viabilidade Financeira de Eventos para Pequenos Organizadores. Entrega o motor matemático puro e desacoplado (`src/calculator.js`), interface web semântica e acessível WCAG 2.2 AA (`src/index.html`, `src/style.css`, `src/app.js`), e suíte completa de testes automatizados com 100% de aprovação comprovada em log auditável.",
+  "input_ids": [
+    "ART-ARCH-001"
+  ],
+  "evidence_refs": [
+    "evidence/RUN-EVENTO-VIAB-002/unit-tests.log"
+  ],
+  "sections": {
+    "input_prd": "runs/RUN-EVENTO-VIAB-002/artifacts/ART-PRD-001.json (sha: a1b55575e550768f9f3f7e85651a4dec8b5c56cb2a1a372e215c2710a39548f4). Atende estritamente às histórias US-001 a US-005 e critérios de aceitação AC-001 a AC-011, contemplando cálculo de ponto de equilíbrio, projeção de resultados, matriz de 3 cenários de sensibilidade (50%, 100%, 120%), presets de ticketeiras (Sympla com piso de R$ 3,99, Ticket Tailor com taxa fixa, personalizada e sem taxa), ausência de tráfego de dados (LGPD) e disclaimer visível.",
+    "architecture_ref": "runs/RUN-EVENTO-VIAB-002/artifacts/ART-ARCH-001.json (sha: fcfbef2e73258eb74994f5c4db6f7b39bb0a6507a15b4c11c0ae72c6a0864ba5). Implementa a Opção A (SPA Client-Side Estática Pura com Vanilla JS modular), isolando a lógica matemática em módulo puro reutilizável sem dependências em runtime, garantindo custo zero e privacidade por design.",
+    "changes": "1. `src/calculator.js`: Módulo com funções puras (`calculateTicketFee`, `calculateContributionMargin`, `calculateBreakEven`, `calculateProjections`, `calculateScenarios`), arredondamento monetário estrito (`roundCurrency`), validação defensiva contra números negativos e NaN (`sanitizeNonNegative`), e flag `infeasible: true` com mensagem explicativa quando MC <= 0 para evitar divisão por zero e Infinity. Suporte isomórfico (CommonJS / navegador).\n2. `src/index.html`: Página SPA com meta CSP estrita, elementos semânticos HTML5, skip-link, labels associados, formulário com campos numéricos e presets de taxa, painel de resultados com cards de métricas, tabela discriminada de receitas/custos, grade reativa de cenários e rodapé com disclaimer legal/financeiro e conformidade LGPD.\n3. `src/style.css`: Estilização moderna e responsiva com variáveis CSS (tokens de design), contraste de cores em conformidade com WCAG 2.2 AA (>= 4.5:1 para texto normal e >= 3:1 para componentes de UI), estados de foco visíveis (`:focus`) e diferenciação cromática e textual para lucro e prejuízo.\n4. `src/app.js`: Controlador reativo de DOM com manipulação segura (zero `eval`, zero `innerHTML`, utilizando exclusivamente `textContent` e criação de nós), vinculando ouvintes de eventos `input` e `change` para atualização instantânea em tempo real (<2ms).\n5. `tests/test_calculator.test.js`: Suíte de asserções em Node.js cobrindo nominalmente AC-001 a AC-009 e casos de borda (piso da Sympla, Math.ceil no break-even, inviabilidade unitária, sanitização).\n6. `tests/test_event_viability_calculator.py`: Suíte automatizada em Python `unittest` com 10 casos de teste verificando os critérios de aceite contra `src/calculator.js`.",
+    "unit_test_command": ".\\.venv\\Scripts\\python.exe -m unittest discover -s tests -v",
+    "unit_test_output": "Ran 59 tests in 2.367s - OK (100% passing, incluindo os 10 testes de EventViabilityCalculatorTests e testes de governança). Log completo registrado em evidence/RUN-EVENTO-VIAB-002/unit-tests.log.",
+    "integration_results": "Todos os módulos integram-se sem falhas. Execução direta via Node.js (`node tests/test_calculator.test.js`) e via suíte Python unittest (`test_event_viability_calculator.py`) apresentaram exit code 0. Verificação estática confirmou ausência de eval e innerHTML no código em execução.",
+    "security_considerations": "1. CSP Estrita: Meta tag CSP configurada como default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'.\n2. XSS e DOM Injection: Ausência estrita de innerHTML e eval em app.js e calculator.js. Todo conteúdo dinâmico é injetado via textContent e createElement.\n3. Minimização de Dados (LGPD Art. 6º, III): Execução 100% client-side na memória volátil do navegador, sem envio de parâmetros ou PII para nenhum servidor remoto.\n4. Higienização Numérica: Sanitização contra números negativos, caracteres inválidos, valores nulos e proteção contra divisão por zero e Infinity.",
+    "commit_ref": "189cb1f63a43cd84942377df4c06355f62c96a98 (branch: feature/calculadora-viabilidade)"
+  }
+}

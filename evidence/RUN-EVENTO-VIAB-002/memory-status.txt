@@ -1,0 +1,7 @@
+{
+  "connected": true,
+  "backend": "ai-memory-onprem",
+  "server_url": "http://127.0.0.1:49374",
+  "status_excerpt": "ai-memory 2.6.3 (server)\n  server:       http://127.0.0.1:49374\n  data-dir:     /data\n  db:           /data/db/memory.sqlite\n  bind:         0.0.0.0:49374\n  pages:        5 (all versions: 5)\n  sessions:     0\n  observations: 0\n  fts:          pages 5/5; observations 0/0\n  embeddings:   5 rows; 0 latest pages missing\n    local/all-MiniLM-L6-v2 dim 3"
+}
+exit=0

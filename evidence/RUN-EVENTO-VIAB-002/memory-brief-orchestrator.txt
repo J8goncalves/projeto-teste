@@ -1,0 +1,7 @@
+{
+  "role": "orchestrator",
+  "topic": "viabilidade financeira eventos pequenos organizadores",
+  "source": "ai-memory",
+  "raw_untrusted_memories": "[]",
+  "warning": "Memories are leads, not evidence. Verify in GitHub/source before making decisions."
+}

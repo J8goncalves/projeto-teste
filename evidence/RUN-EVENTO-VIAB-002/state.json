@@ -1,0 +1,254 @@
+{
+  "version": "5.0",
+  "run_id": "RUN-EVENTO-VIAB-002",
+  "goal": "Avaliar viabilidade de ferramenta de viabilidade financeira de eventos para pequenos organizadores e, se justificado, construir MVP testavel",
+  "level": 2,
+  "workflow_mode": "PRODUCT_DISCOVERY",
+  "phase": "DESIGN",
+  "artifacts": {
+    "ART-INTAKE-001": {
+      "kind": "intake",
+      "role": "orchestrator",
+      "sha256": "2a90f8935e87ee97b4aa7028624321abe700ff12f14da6eaac683d1dce586f1f",
+      "path": "runs\\RUN-EVENTO-VIAB-002\\artifacts\\ART-INTAKE-001.json",
+      "submitted_at": "2026-10-11T04:05:23.224196+00:00",
+      "producer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-INTAKE-002": {
+      "kind": "intake",
+      "role": "orchestrator",
+      "sha256": "e464a295e79c4d4cd7c50f37cf2f0f1c86291b2d7619288b35abe4d10c487fc7",
+      "path": "runs\\RUN-EVENTO-VIAB-002\\artifacts\\ART-INTAKE-002.json",
+      "submitted_at": "2026-10-11T04:07:50.217813+00:00",
+      "producer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-MARKET-001": {
+      "kind": "market-research",
+      "role": "market-researcher",
+      "sha256": "9660879f5df9be67576784ee90cfdfec5bd2710929fc579e37bd08a5bfc839d4",
+      "path": "runs\\RUN-EVENTO-VIAB-002\\artifacts\\ART-MARKET-001.json",
+      "submitted_at": "2026-10-11T04:18:54.060445+00:00",
+      "producer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-CRIT-001": {
+      "kind": "critical-review",
+      "role": "critical-reviewer",
+      "sha256": "ea65dc22ee69b20bbaa1ebba218c3c64aa178f64085ed6a10c6f1b64c076945a",
+      "path": "runs\\RUN-EVENTO-VIAB-002\\artifacts\\ART-CRIT-001.json",
+      "submitted_at": "2026-10-11T04:20:53.067582+00:00",
+      "producer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-PRD-001": {
+      "kind": "prd",
+      "role": "product-manager",
+      "sha256": "a1b55575e550768f9f3f7e85651a4dec8b5c56cb2a1a372e215c2710a39548f4",
+      "path": "runs\\RUN-EVENTO-VIAB-002\\artifacts\\ART-PRD-001.json",
+      "submitted_at": "2026-10-11T04:23:20.069086+00:00",
+      "producer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-ARCH-001": {
+      "kind": "architecture",
+      "role": "architect",
+      "sha256": "fcfbef2e73258eb74994f5c4db6f7b39bb0a6507a15b4c11c0ae72c6a0864ba5",
+      "path": "runs\\RUN-EVENTO-VIAB-002\\artifacts\\ART-ARCH-001.json",
+      "submitted_at": "2026-10-11T04:25:50.927143+00:00",
+      "producer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-BUILD-001": {
+      "kind": "build",
+      "role": "developer",
+      "sha256": "b5dc051be8a572c43584839732cdfeb2464beaa572ac75e19bf00d1d46265443",
+      "path": "runs\\RUN-EVENTO-VIAB-002\\artifacts\\ART-BUILD-001.json",
+      "submitted_at": "2026-10-11T04:34:10.901107+00:00",
+      "producer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    }
+  },
+  "accepted": {
+    "ART-INTAKE-002": {
+      "reviewer": "critical-reviewer",
+      "at": "2026-10-11T04:08:36.042481+00:00",
+      "reason": "ACCEPT. Pontos da rodada 1 resolvidos: (1) planned_roles agora lista critical-review -> ceo (principal) ou legal-compliance, conforme REVIEWERS em control.py. (2) release-manager condicional a RELEASE/LEARN, citando contracts.py linha 33 (autor release-manager, confirmado); terminal_paths cobre no-go, GO sem aprovacao BUILD e GO com identidade nao VERIFIED. (3) definition_of_success com rubrica go/no-go por condicoes (a-e) sem numeros de mercado inventados; o limiar >=3 alternativas e criterio de processo, nao metrica. (4) known_limitations declara ausencia de customer-researcher e demanda como hipotese. (5) env-presence.txt (booleanos, valores nao registrados) e preliminary-observations.md rotulam evidencia fraca para DENIED exit 2 e skipped=1; test_v5_1_1_hardening.py:370 confirma skipTest condicional (hipotese marcada como nao provada); state.json confirma UNVERIFIED. (6) premissas do orquestrador marcadas explicitamente no goal/scope. Observacoes NAO bloqueantes para correcao futura: terminal_paths diz que NO-GO para em PLANNING, mas em control.py advance() exige market-research e critical-review aceitos para ENTRAR em PLANNING, logo um NO-GO por falha de (a)/(b) ficara em DISCOVERY; e CLOSED exige aprovacao humana, entao encerramento de no-go depende de gate humano. O orquestrador deve registrar isso no relatorio final. O DENIED exit 2 segue sem captura primaria (evidencia fraca, declarada).",
+      "sha256": "e464a295e79c4d4cd7c50f37cf2f0f1c86291b2d7619288b35abe4d10c487fc7",
+      "reviewer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-MARKET-001": {
+      "reviewer": "critical-reviewer",
+      "at": "2026-10-11T04:20:12.089771+00:00",
+      "reason": "Aprovado apos revisao critica e independente: atende a rubrica do ART-INTAKE-002 com 3 classes de alternativas detalhadas, 6 fontes primarias/secundarias publicas verificaveis, lacuna de pequenos organizadores documentada, aspectos regulatórios (BACEN/LGPD) delimitados, demanda tratada estritamente como hipotese E0 e recomendacao explicita GO com riscos e incertezas mapeados.",
+      "sha256": "9660879f5df9be67576784ee90cfdfec5bd2710929fc579e37bd08a5bfc839d4",
+      "reviewer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-CRIT-001": {
+      "reviewer": "legal-compliance",
+      "at": "2026-10-11T04:21:29.387006+00:00",
+      "reason": "Revisao critica independente aprovada por legal-compliance: o documento contesta rigorosamente as evidencias factuais vs hipoteses de mercado, identifica lacunas de customer discovery e estabelece delimitacao juridica e regulatoria adequada para o MVP (carater estritamente informativo de simulador, ausencia de intermediacao/custodia financeira sob egide BACEN e ausencia de coleta/tratamento de dados pessoais sensiveis sob a LGPD).",
+      "sha256": "ea65dc22ee69b20bbaa1ebba218c3c64aa178f64085ed6a10c6f1b64c076945a",
+      "reviewer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-PRD-001": {
+      "reviewer": "qa",
+      "at": "2026-10-11T04:24:04.076531+00:00",
+      "reason": "Criterios AC-001 a AC-011 sao deterministiscos, mensuraveis e cobrem casos nominais e de borda (divisao por zero, margem negativa, sanitizacao, pisos de taxa). Rastreabilidade US-001 a US-005 completa e sem orfaos. Test plan contempla Eixo 1 e Eixo 2 com WCAG 2.2 AA.",
+      "sha256": "a1b55575e550768f9f3f7e85651a4dec8b5c56cb2a1a372e215c2710a39548f4",
+      "reviewer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    },
+    "ART-ARCH-001": {
+      "reviewer": "security-reviewer",
+      "at": "2026-10-11T04:26:33.533036+00:00",
+      "reason": "Arquitetura aprovada sob otica de seguranca de aplicacao e superficie de ataque: adota solucao estatica client-side pura com zero dependencias em runtime, zero backend attack surface, zero cookies/tracking e conformidade com LGPD (minimizacao). Diretrizes estritas de CSP (default-src 'none'), prevencao rigorosa de XSS (proibicao de innerHTML/eval em prol de textContent) e higienizacao defensiva de inputs numericos contra divisao por zero e NaN.",
+      "sha256": "fcfbef2e73258eb74994f5c4db6f7b39bb0a6507a15b4c11c0ae72c6a0864ba5",
+      "reviewer_identity": {
+        "assurance": "UNVERIFIED",
+        "reason": "no execution context provided by runner"
+      }
+    }
+  },
+  "approvals": {},
+  "corrections": {
+    "orchestrator->critical-reviewer:intake": 1
+  },
+  "history": [
+    {
+      "at": "2026-10-11T04:04:39.445801+00:00",
+      "action": "init"
+    },
+    {
+      "at": "2026-10-11T04:05:23.224221+00:00",
+      "action": "submitted",
+      "artifact": "ART-INTAKE-001",
+      "role": "orchestrator"
+    },
+    {
+      "at": "2026-10-11T04:06:37.185362+00:00",
+      "action": "review",
+      "artifact": "ART-INTAKE-001",
+      "reviewer": "critical-reviewer",
+      "verdict": "REWORK",
+      "reason": "REWORK. (1) planned_roles contradiz org_v5/control.py: o kind critical-review, exigido em PLANNING no modo PRODUCT_DISCOVERY, so pode ser aceito por ceo ou legal-compliance (REVIEWERS), mas o intake declara ceo e legal-compliance como nao previstos; sem corrigir, a run trava em PLANNING. (2) release-manager declarado nao previsto, mas LEARN exige artefato release cujo autor e release-manager (contracts.py linha 33); o intake nao diz como a run chega a LEARN/CLOSED nem o que ocorre em no-go ou sem gate BUILD. (3) definition_of_success sem criterio objetivo de go/no-go (limiares/condicoes) e sem caminho terminal para no-go; criterio 1 depende de decisao justificada sem rubrica verificavel. (4) Ausencia de customer-researcher nao declarada como limitacao: demanda de usuarios sera apenas hipotese sem evidencia primaria; registrar explicitamente. (5) Afirmacoes sem evidence_ref: memory-status DENIED exit 2 as 01:03:41 (so existe a saida connected=true), GITHUB_TOKEN ausente e ausencia de runner autoridade; ledger diz 1 skipped mas baseline-tests.txt mostra OK sem skipped. (6) Itens de escopo/exclusoes e exemplos (break-even, margem, cenarios, sem pagamento/contas) sao interpretacao do orquestrador; marcar como premissas a validar, nao como pedido do humano. Modo PRODUCT_DISCOVERY vs ENGINEERING_SMALL: justificado e confirmado em control.py MODES (ENGINEERING_SMALL tem PLANNING vazio). Fidelidade a demanda original: ok nos pontos de merge/producao/relatorio/sem metricas ficticias."
+    },
+    {
+      "at": "2026-10-11T04:07:50.217823+00:00",
+      "action": "submitted",
+      "artifact": "ART-INTAKE-002",
+      "role": "orchestrator"
+    },
+    {
+      "at": "2026-10-11T04:08:36.042493+00:00",
+      "action": "review",
+      "artifact": "ART-INTAKE-002",
+      "reviewer": "critical-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "ACCEPT. Pontos da rodada 1 resolvidos: (1) planned_roles agora lista critical-review -> ceo (principal) ou legal-compliance, conforme REVIEWERS em control.py. (2) release-manager condicional a RELEASE/LEARN, citando contracts.py linha 33 (autor release-manager, confirmado); terminal_paths cobre no-go, GO sem aprovacao BUILD e GO com identidade nao VERIFIED. (3) definition_of_success com rubrica go/no-go por condicoes (a-e) sem numeros de mercado inventados; o limiar >=3 alternativas e criterio de processo, nao metrica. (4) known_limitations declara ausencia de customer-researcher e demanda como hipotese. (5) env-presence.txt (booleanos, valores nao registrados) e preliminary-observations.md rotulam evidencia fraca para DENIED exit 2 e skipped=1; test_v5_1_1_hardening.py:370 confirma skipTest condicional (hipotese marcada como nao provada); state.json confirma UNVERIFIED. (6) premissas do orquestrador marcadas explicitamente no goal/scope. Observacoes NAO bloqueantes para correcao futura: terminal_paths diz que NO-GO para em PLANNING, mas em control.py advance() exige market-research e critical-review aceitos para ENTRAR em PLANNING, logo um NO-GO por falha de (a)/(b) ficara em DISCOVERY; e CLOSED exige aprovacao humana, entao encerramento de no-go depende de gate humano. O orquestrador deve registrar isso no relatorio final. O DENIED exit 2 segue sem captura primaria (evidencia fraca, declarada)."
+    },
+    {
+      "at": "2026-10-11T04:08:52.839734+00:00",
+      "action": "advance",
+      "to": "DISCOVERY"
+    },
+    {
+      "at": "2026-10-11T04:18:54.060458+00:00",
+      "action": "submitted",
+      "artifact": "ART-MARKET-001",
+      "role": "market-researcher"
+    },
+    {
+      "at": "2026-10-11T04:20:12.089784+00:00",
+      "action": "review",
+      "artifact": "ART-MARKET-001",
+      "reviewer": "critical-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "Aprovado apos revisao critica e independente: atende a rubrica do ART-INTAKE-002 com 3 classes de alternativas detalhadas, 6 fontes primarias/secundarias publicas verificaveis, lacuna de pequenos organizadores documentada, aspectos regulatórios (BACEN/LGPD) delimitados, demanda tratada estritamente como hipotese E0 e recomendacao explicita GO com riscos e incertezas mapeados."
+    },
+    {
+      "at": "2026-10-11T04:20:53.067599+00:00",
+      "action": "submitted",
+      "artifact": "ART-CRIT-001",
+      "role": "critical-reviewer"
+    },
+    {
+      "at": "2026-10-11T04:21:29.387017+00:00",
+      "action": "review",
+      "artifact": "ART-CRIT-001",
+      "reviewer": "legal-compliance",
+      "verdict": "ACCEPT",
+      "reason": "Revisao critica independente aprovada por legal-compliance: o documento contesta rigorosamente as evidencias factuais vs hipoteses de mercado, identifica lacunas de customer discovery e estabelece delimitacao juridica e regulatoria adequada para o MVP (carater estritamente informativo de simulador, ausencia de intermediacao/custodia financeira sob egide BACEN e ausencia de coleta/tratamento de dados pessoais sensiveis sob a LGPD)."
+    },
+    {
+      "at": "2026-10-11T04:21:54.620439+00:00",
+      "action": "advance",
+      "to": "PLANNING"
+    },
+    {
+      "at": "2026-10-11T04:23:20.069099+00:00",
+      "action": "submitted",
+      "artifact": "ART-PRD-001",
+      "role": "product-manager"
+    },
+    {
+      "at": "2026-10-11T04:24:04.076540+00:00",
+      "action": "review",
+      "artifact": "ART-PRD-001",
+      "reviewer": "qa",
+      "verdict": "ACCEPT",
+      "reason": "Criterios AC-001 a AC-011 sao deterministiscos, mensuraveis e cobrem casos nominais e de borda (divisao por zero, margem negativa, sanitizacao, pisos de taxa). Rastreabilidade US-001 a US-005 completa e sem orfaos. Test plan contempla Eixo 1 e Eixo 2 com WCAG 2.2 AA."
+    },
+    {
+      "at": "2026-10-11T04:24:35.448859+00:00",
+      "action": "advance",
+      "to": "DESIGN"
+    },
+    {
+      "at": "2026-10-11T04:25:50.927158+00:00",
+      "action": "submitted",
+      "artifact": "ART-ARCH-001",
+      "role": "architect"
+    },
+    {
+      "at": "2026-10-11T04:26:33.533047+00:00",
+      "action": "review",
+      "artifact": "ART-ARCH-001",
+      "reviewer": "security-reviewer",
+      "verdict": "ACCEPT",
+      "reason": "Arquitetura aprovada sob otica de seguranca de aplicacao e superficie de ataque: adota solucao estatica client-side pura com zero dependencias em runtime, zero backend attack surface, zero cookies/tracking e conformidade com LGPD (minimizacao). Diretrizes estritas de CSP (default-src 'none'), prevencao rigorosa de XSS (proibicao de innerHTML/eval em prol de textContent) e higienizacao defensiva de inputs numericos contra divisao por zero e NaN."
+    },
+    {
+      "at": "2026-10-11T04:34:10.901118+00:00",
+      "action": "submitted",
+      "artifact": "ART-BUILD-001",
+      "role": "developer"
+    }
+  ]
+}
