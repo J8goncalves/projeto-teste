@@ -217,7 +217,8 @@ def is_strictly_safe_control_plane(cmd_str):
 def is_strictly_safe_evidence_writer(cmd_str):
     if any(tok in cmd_str for tok in ('>', '<', '|', ';', '&', '`', '$', '\n', '\r')):
         return False
-    pattern = r'^\s*(["\']?[^"\']*[\\/])?python(\.exe)?["\']?\s+(\.agents[\\/]scripts[\\/]|scripts[\\/])utf8_writer\.py\s+(evidence[\\/]|runs[\\/]|logs[\\/])[a-zA-Z0-9_\-\./\\]+\s+.*$'
+    # Suporta tanto --target <path> quanto argumento posicional
+    pattern = r'^\s*(["\']?[^"\']*[\\/])?python(\.exe)?["\']?\s+(\.agents[\\/]scripts[\\/]|scripts[\\/])utf8_writer\.py\s+(--target\s+|=)?["\']?(evidence[\\/]|runs[\\/]|logs[\\/])[a-zA-Z0-9_\-\./\\]+["\']?\s+.*$'
     return bool(re.match(pattern, cmd_str, re.IGNORECASE))
 
 def is_strictly_safe_which_where(cmd_str):
@@ -270,13 +271,16 @@ def is_read_only_incident_command(cmd_str):
 
 def is_safe_incident_evidence_writer(cmd_str, workspace_root):
     """
-    Valida chamada a utf8_writer.py sob incidentes (F02).
+    Valida chamada a utf8_writer.py sob incidentes (F02/Fase B).
     Permite apenas gravacao direcionada estritamente a evidence/, runs/ ou logs/
     dentro do workspace canonico, sem qualquer escape (..) ou redirecionamento.
+    Suporta --target <path> e argumento posicional.
     """
     if any(tok in cmd_str for tok in ('>', '<', '|', ';', '&', '`', '$', '\n', '\r')):
         return False
-    pattern = r'^\s*(["\']?[^"\']*[\\/])?python(\.exe)?["\']?\s+(\.agents[\\/]scripts[\\/]|scripts[\\/])utf8_writer\.py\s+([^\s]+)\s+.*$'
+
+    # Regex que extrai o alvo suportando --target <path> ou posicional
+    pattern = r'^\s*(["\']?[^"\']*[\\/])?python(\.exe)?["\']?\s+(\.agents[\\/]scripts[\\/]|scripts[\\/])utf8_writer\.py\s+(?:--target\s+|--target=)?["\']?([^\s"\']+)["\']?\s+.*$'
     m = re.match(pattern, cmd_str, re.IGNORECASE)
     if not m:
         return False

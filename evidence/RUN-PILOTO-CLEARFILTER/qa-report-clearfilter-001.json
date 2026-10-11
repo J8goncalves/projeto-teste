@@ -1,0 +1,127 @@
+{
+  "id": "qa-report-clearfilter-001",
+  "run_id": "RUN-PILOTO-CLEARFILTER",
+  "version": "5.0",
+  "kind": "qa-report",
+  "role": "qa",
+  "status": "submitted",
+  "summary": "Auditoria de qualidade e testes E2E do botao acessivel 'Limpar filtros' no Task Manager. Validacao completa dos criterios de aceite E2E-01 a E2E-08 em navegador real via Chrome DevTools MCP, suite de 14 cenarios Node.js e 84 testes Python CLI.",
+  "input_ids": [
+    "build-clearfilter-001"
+  ],
+  "evidence_refs": [
+    "evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log",
+    "evidence/RUN-PILOTO-CLEARFILTER/screenshot_clearfilter.png",
+    "tests/test_task_manager.js",
+    "src/index.html",
+    "src/app.js"
+  ],
+  "verdict": "PASS",
+  "execution": {
+    "real_execution": true,
+    "command": "node tests/test_task_manager.js",
+    "exit_code": 0,
+    "output_ref": "evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log",
+    "output_sha256": "a4f200a972987ab2fea046e3c8699240fc1ae3f719fb3614b650e889e97af3b6",
+    "tool": "chrome-devtools-mcp + node-runner",
+    "version": "22.14.0",
+    "started_at": "2026-10-11T20:11:50Z",
+    "finished_at": "2026-10-11T20:15:35Z",
+    "environment": "Windows 11 x64 / Node.js v22.14.0 / Chrome DevTools MCP",
+    "commit_sha": "53178c1b5a359cae0b46419fc2524f4b959109e8"
+  },
+  "sections": {
+    "method": "browser-interactive",
+    "environment": "Windows 11 x64 / Chrome DevTools MCP / Node.js v22.14.0 / Python 3.14.8",
+    "acceptance_mapping": [
+      {
+        "id": "E2E-01",
+        "description": "Presenca e conformidade semantica do elemento no DOM (#clearFiltersBtn, button type='button', classes 'btn btn-secondary btn-sm', aria-label='Limpar filtros e busca')",
+        "status": "VERIFIED_PASS"
+      },
+      {
+        "id": "E2E-02",
+        "description": "Alvo de toque e dimensionamento acessivel WCAG 2.2 SC 2.5.8 (min-height e min-width >= 44px em desktop e mobile 390x844)",
+        "status": "VERIFIED_PASS"
+      },
+      {
+        "id": "E2E-03",
+        "description": "Limpeza instantanea do campo de busca textual (#searchInput.value resetado para string vazia)",
+        "status": "VERIFIED_PASS"
+      },
+      {
+        "id": "E2E-04",
+        "description": "Redefinicao do filtro de status para 'Todas' (currentFilter='ALL', classe active no botao Todas e remocao dos demais)",
+        "status": "VERIFIED_PASS"
+      },
+      {
+        "id": "E2E-05",
+        "description": "Sincronizacao de atributos de acessibilidade (aria-pressed='true' no botao Todas e aria-pressed='false' nos demais)",
+        "status": "VERIFIED_PASS"
+      },
+      {
+        "id": "E2E-06",
+        "description": "Restauracao integral da listagem de tarefas no DOM (todas as tarefas renderizadas em #taskList e anuncio em live region)",
+        "status": "VERIFIED_PASS"
+      },
+      {
+        "id": "E2E-07",
+        "description": "Acessibilidade completa via teclado (acionamento por teclas Enter e Space, padrao WAI-ARIA)",
+        "status": "VERIFIED_PASS"
+      },
+      {
+        "id": "E2E-08",
+        "description": "Integridade e nao-mutacao de dados (tarefas e estado em memoria e localStorage permanecem intactos sem corrupcao)",
+        "status": "VERIFIED_PASS"
+      }
+    ],
+    "interactions": [
+      {
+        "target": "#taskForm / #taskInput / #addBtn",
+        "action": "create-tasks",
+        "expected": "Criacao de 3 tarefas estruturadas em estados TODO, IN_PROGRESS e DONE",
+        "observed": "Tarefas criadas, transicionadas e listadas com sucesso",
+        "evidence_ref": "evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log"
+      },
+      {
+        "target": ".filter-btn[data-filter='DONE']",
+        "action": "click",
+        "expected": "Filtrar para exibir apenas a tarefa com status DONE",
+        "observed": "Apenas 1 tarefa exibida, botao DONE com aria-pressed='true'",
+        "evidence_ref": "evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log"
+      },
+      {
+        "target": "#searchInput",
+        "action": "fill: 'Inexistente'",
+        "expected": "Combinar filtro com termo inexistente exibindo empty-state",
+        "observed": "0 tarefas exibidas e elemento #emptyState visivel",
+        "evidence_ref": "evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log"
+      },
+      {
+        "target": "#clearFiltersBtn",
+        "action": "click",
+        "expected": "Limpar busca, resetar filtro para ALL com aria-pressed='true', restaurar 3 tarefas e vocalizar feedback",
+        "observed": "Busca limpa, ALL ativo com aria-pressed='true', 3 tarefas renderizadas e mensagem no #liveFeedback",
+        "evidence_ref": "evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log"
+      },
+      {
+        "target": "#clearFiltersBtn",
+        "action": "keydown: 'Enter'",
+        "expected": "Disparo acessivel via tecla Enter com redefinicao completa de filtros e busca",
+        "observed": "Filtros redefinidos para ALL e listagem de 3 tarefas restaurada via Enter",
+        "evidence_ref": "evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log"
+      },
+      {
+        "target": "#clearFiltersBtn",
+        "action": "keydown: ' '",
+        "expected": "Disparo acessivel via tecla Space com redefinicao completa de filtros e busca",
+        "observed": "Filtros redefinidos para ALL e listagem de 3 tarefas restaurada via Space",
+        "evidence_ref": "evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log"
+      }
+    ],
+    "observations": "Comportamento visual e reativo 100% aderente aos criterios de aceite E2E-01 a E2E-08. Sem regressoes nos 14 cenarios automatizados existentes do Task Manager.",
+    "console": "Zero erros e zero avisos criticos capturados no console do navegador durante todas as interacoes.",
+    "evidence": "Evidencia gravada em evidence/RUN-PILOTO-CLEARFILTER/qa-browser.log e evidence/RUN-PILOTO-CLEARFILTER/screenshot_clearfilter.png.",
+    "limitations": "Execucao em navegador Chromium via Chrome DevTools MCP em ambiente sandbox Windows 11."
+  }
+}

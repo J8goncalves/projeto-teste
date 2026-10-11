@@ -105,7 +105,12 @@ global.document = {
                 global._filterBtns = filters.map(f => {
                     const btn = createMockElement('', 'button');
                     btn.setAttribute('data-filter', f);
-                    if (f === 'ALL') btn.classList.add('active');
+                    if (f === 'ALL') {
+                        btn.classList.add('active');
+                        btn.setAttribute('aria-pressed', 'true');
+                    } else {
+                        btn.setAttribute('aria-pressed', 'false');
+                    }
                     return btn;
                 });
             }
@@ -577,8 +582,129 @@ async function runTests() {
     assert.strictEqual(store13.tasks.length, 1);
     console.log('✓ Teste 13 passou: Reinicialização transacional fail-closed e recuperação comprovadas.');
 
+    // =========================================================================
+    // Teste 14: Botão Acessível 'Limpar filtros' (Piloto RUN-PILOTO-CLEARFILTER)
+    // =========================================================================
+    console.log('[Teste 14] Verificando Botão Acessível "Limpar filtros", Teclado e Restauração de Listagem...');
+
+    // 1. Inicializa ambiente limpo com eval(appCode)
+    global.localStorage.clear();
+    global._elements = {};
+    delete global._filterBtns;
+    eval(appCode);
+
+    const store14 = global.__taskStore;
+    assert(store14, 'TaskStore deve ser inicializado');
+
+    // 2. Cria 3 tarefas com diferentes status no TaskStore
+    store14.add('Tarefa Alpha Pendente', 'Descrição Alpha', 'Critério A');
+    store14.add('Tarefa Beta Em Andamento', 'Descrição Beta', 'Critério B');
+    store14.updateStatus(store14.tasks[1].id, 'IN_PROGRESS');
+    store14.add('Tarefa Gamma Concluída', 'Descrição Gamma', 'Critério C');
+    store14.updateStatus(store14.tasks[2].id, 'DONE');
+
+    assert.strictEqual(store14.tasks.length, 3, 'Deve conter 3 tarefas cadastradas');
+
+    // Captura snapshot estrito de dados antes de qualquer interação de filtro/busca
+    const tasksSnapshotBefore = JSON.stringify(store14.tasks);
+    const storageSnapshotBefore = global.localStorage.getItem('tasks');
+
+    // Referências aos elementos DOM mockados
+    const searchInput14 = global.document.getElementById('searchInput');
+    const clearFiltersBtn14 = global.document.getElementById('clearFiltersBtn');
+    const filterBtns14 = global.document.querySelectorAll('.filter-btn');
+    const taskList14 = global.document.getElementById('taskList');
+
+    assert(clearFiltersBtn14, 'Elemento clearFiltersBtn deve existir no DOM');
+    assert(filterBtns14 && filterBtns14.length === 4, 'Devem existir 4 botões de filtro de status');
+
+    const btnFilterAll14 = filterBtns14.find(b => b.getAttribute('data-filter') === 'ALL');
+    const btnFilterTodo14 = filterBtns14.find(b => b.getAttribute('data-filter') === 'TODO');
+    const btnFilterInProgress14 = filterBtns14.find(b => b.getAttribute('data-filter') === 'IN_PROGRESS');
+    const btnFilterDone14 = filterBtns14.find(b => b.getAttribute('data-filter') === 'DONE');
+
+    // Força renderização inicial das 3 tarefas acionando o filtro ALL
+    btnFilterAll14.click();
+    assert.strictEqual(taskList14.children.length, 3, 'Inicialmente todas as 3 tarefas devem estar renderizadas');
+    assert.strictEqual(btnFilterAll14.classList.contains('active'), true, 'Botão Todas (ALL) deve estar ativo');
+    assert.strictEqual(btnFilterAll14.getAttribute('aria-pressed'), 'true', 'aria-pressed deve ser true no botão ALL');
+
+    // 3. Aplica filtro de status 'DONE' e termo de busca
+    btnFilterDone14.click();
+    assert.strictEqual(btnFilterDone14.classList.contains('active'), true, 'DONE deve estar ativo');
+    assert.strictEqual(btnFilterDone14.getAttribute('aria-pressed'), 'true', 'DONE deve ter aria-pressed true');
+    assert.strictEqual(btnFilterAll14.classList.contains('active'), false, 'ALL não deve estar ativo');
+    assert.strictEqual(btnFilterAll14.getAttribute('aria-pressed'), 'false', 'ALL deve ter aria-pressed false');
+    assert.strictEqual(taskList14.children.length, 1, 'Apenas 1 tarefa visível com filtro DONE');
+
+    // Digita termo na busca que não coincide com a tarefa concluída
+    searchInput14.value = 'Inexistente';
+    if (searchInput14.oninput) {
+        searchInput14.oninput({ target: searchInput14 });
+    }
+    assert.strictEqual(taskList14.children.length, 0, 'Nenhuma tarefa deve ser exibida para termo inexistente');
+
+    // 4. Aciona botão 'Limpar filtros' via CLIQUE
+    clearFiltersBtn14.click();
+
+    // Verificações pós-clique:
+    // a) Limpa o campo de busca
+    assert.strictEqual(searchInput14.value, '', 'Campo de busca deve ser limpo');
+
+    // b) Reseta filtro ativo para 'ALL' e atualiza classes e aria-pressed
+    assert.strictEqual(btnFilterAll14.classList.contains('active'), true, 'Botão Todas (ALL) deve receber classe active');
+    assert.strictEqual(btnFilterAll14.getAttribute('aria-pressed'), 'true', 'Botão Todas (ALL) deve ter aria-pressed true');
+    assert.strictEqual(btnFilterTodo14.classList.contains('active'), false, 'Botão TODO não deve ter classe active');
+    assert.strictEqual(btnFilterTodo14.getAttribute('aria-pressed'), 'false', 'Botão TODO deve ter aria-pressed false');
+    assert.strictEqual(btnFilterInProgress14.classList.contains('active'), false, 'Botão IN_PROGRESS não deve ter classe active');
+    assert.strictEqual(btnFilterInProgress14.getAttribute('aria-pressed'), 'false', 'Botão IN_PROGRESS deve ter aria-pressed false');
+    assert.strictEqual(btnFilterDone14.classList.contains('active'), false, 'Botão DONE não deve ter classe active');
+    assert.strictEqual(btnFilterDone14.getAttribute('aria-pressed'), 'false', 'Botão DONE deve ter aria-pressed false');
+
+    // c) Restaura listagem integral de tarefas
+    assert.strictEqual(taskList14.children.length, 3, 'Todas as 3 tarefas devem ser restauradas na listagem');
+
+    // d) NÃO altera, apaga nem corrompe os dados em store.tasks ou localStorage
+    assert.strictEqual(store14.tasks.length, 3, 'Total de tarefas em store.tasks deve permanecer 3');
+    assert.strictEqual(JSON.stringify(store14.tasks), tasksSnapshotBefore, 'Dados em store.tasks devem permanecer intactos');
+    assert.strictEqual(global.localStorage.getItem('tasks'), storageSnapshotBefore, 'localStorage deve permanecer inalterado');
+
+    // 5. Validação de Acessibilidade via TECLADO (Enter e Space)
+    // Simula novo filtro e busca
+    btnFilterTodo14.click();
+    assert.strictEqual(taskList14.children.length, 1, 'Filtro TODO exibe 1 tarefa');
+    searchInput14.value = 'Alpha';
+    if (searchInput14.oninput) {
+        searchInput14.oninput({ target: searchInput14 });
+    }
+    assert.strictEqual(taskList14.children.length, 1);
+
+    // Acionamento com tecla 'Enter'
+    assert(typeof clearFiltersBtn14.onkeydown === 'function', 'Listener de keydown deve estar registrado');
+    clearFiltersBtn14.onkeydown({ key: 'Enter', preventDefault: () => {} });
+
+    assert.strictEqual(searchInput14.value, '', 'Busca deve ser limpa após tecla Enter');
+    assert.strictEqual(btnFilterAll14.classList.contains('active'), true, 'Filtro ALL ativo após Enter');
+    assert.strictEqual(btnFilterAll14.getAttribute('aria-pressed'), 'true', 'aria-pressed true após Enter');
+    assert.strictEqual(taskList14.children.length, 3, 'Todas as tarefas restauradas após Enter');
+
+    // Simula novo filtro e acionamento com tecla ' ' (Space)
+    btnFilterInProgress14.click();
+    assert.strictEqual(taskList14.children.length, 1, 'Filtro IN_PROGRESS exibe 1 tarefa');
+    clearFiltersBtn14.onkeydown({ key: ' ', preventDefault: () => {} });
+
+    assert.strictEqual(btnFilterAll14.classList.contains('active'), true, 'Filtro ALL ativo após Space');
+    assert.strictEqual(btnFilterAll14.getAttribute('aria-pressed'), 'true', 'aria-pressed true após Space');
+    assert.strictEqual(taskList14.children.length, 3, 'Todas as tarefas restauradas após Space');
+
+    // Comprova que nenhuma operação de teclado corrompeu dados
+    assert.strictEqual(JSON.stringify(store14.tasks), tasksSnapshotBefore, 'store.tasks intacto após eventos de teclado');
+    assert.strictEqual(global.localStorage.getItem('tasks'), storageSnapshotBefore, 'localStorage intacto após eventos de teclado');
+
+    console.log('✓ Teste 14 passou: Botão Limpar filtros validado com limpeza de busca, restauração de status, aria-pressed, suporte a teclado e persistência inalterada.');
+
     console.log('\n========================================================================');
-    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (13/13 cenários de alta precisão)!');
+    console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO (14/14 cenários de alta precisão)!');
     console.log('========================================================================');
 }
 

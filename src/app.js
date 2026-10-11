@@ -342,6 +342,7 @@
         const emptyState = document.getElementById('emptyState');
         const searchInput = document.getElementById('searchInput');
         const filterBtns = document.querySelectorAll('.filter-btn');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
         const exportBtn = document.getElementById('exportBtn');
         const importBtn = document.getElementById('importBtn');
         const importFileInput = document.getElementById('importFileInput');
@@ -764,6 +765,43 @@
                     currentFilter = btn.getAttribute('data-filter') || 'ALL';
                     renderTasks();
                 });
+            });
+        }
+
+        // Botão Limpar Filtros
+        if (clearFiltersBtn) {
+            const handleClearFilters = (e) => {
+                if (e && typeof e.preventDefault === 'function') {
+                    e.preventDefault();
+                }
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                searchQuery = '';
+                currentFilter = 'ALL';
+
+                if (filterBtns && filterBtns.length > 0) {
+                    filterBtns.forEach(btn => {
+                        const filterVal = btn.getAttribute('data-filter');
+                        if (filterVal === 'ALL') {
+                            btn.classList.add('active');
+                            btn.setAttribute('aria-pressed', 'true');
+                        } else {
+                            btn.classList.remove('active');
+                            btn.setAttribute('aria-pressed', 'false');
+                        }
+                    });
+                }
+
+                renderTasks();
+                notifyUser('Filtros e busca redefinidos para todas as tarefas.');
+            };
+
+            clearFiltersBtn.addEventListener('click', handleClearFilters);
+            clearFiltersBtn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32) {
+                    handleClearFilters(e);
+                }
             });
         }
 

@@ -2,28 +2,46 @@ import sys
 import argparse
 import os
 import hashlib
+from pathlib import Path
+
+def find_workspace_root():
+    # Detecta workspace root procurando .agents
+    cur = Path.cwd().resolve()
+    for parent in [cur] + list(cur.parents):
+        if (parent / '.agents').is_dir():
+            return parent
+    return Path(__file__).resolve().parents[2]
 
 def write_evidence(target_path, content=None, from_stdin=False):
-    workspace_root = os.getcwd()
-    while workspace_root != os.path.dirname(workspace_root):
-        if os.path.exists(os.path.join(workspace_root, '.agents')):
-            break
-        workspace_root = os.path.dirname(workspace_root)
+    workspace_root = find_workspace_root()
 
-    abs_target = os.path.abspath(target_path)
-    # Validate target is inside workspace
-    if not abs_target.startswith(os.path.abspath(workspace_root)):
+    # Se target_path for relativo, resolve SEMPRE a partir da raiz do workspace, mesmo com cwd=.agents
+    target_p = Path(target_path)
+    if not target_p.is_absolute():
+        abs_target = (workspace_root / target_p).resolve()
+    else:
+        abs_target = target_p.resolve()
+
+    # Validação de confinamento estrito
+    try:
+        rel_target = abs_target.relative_to(workspace_root)
+        rel_path = str(rel_target).replace('\\', '/')
+    except ValueError:
         sys.stderr.write(f"ERROR: Target file {target_path} is outside workspace root {workspace_root}\n")
         sys.exit(1)
 
-    # Validate target directory is allowed for evidence
-    rel_path = os.path.relpath(abs_target, workspace_root).replace('\\', '/')
+    # Rejeitar escapes explicitos
+    if '..' in rel_path.split('/'):
+        sys.stderr.write(f"ERROR: Path traversal detected in {target_path}\n")
+        sys.exit(1)
+
+    # Validar prefixos permitidos para relatórios/evidências
     allowed_prefixes = ('evidence/', 'runs/', 'logs/', 'intelligence/', 'docs/')
     if not any(rel_path.startswith(p) for p in allowed_prefixes):
         sys.stderr.write(f"ERROR: Destination {rel_path} must be inside one of {allowed_prefixes}\n")
         sys.exit(1)
 
-    os.makedirs(os.path.dirname(abs_target), exist_ok=True)
+    abs_target.parent.mkdir(parents=True, exist_ok=True)
 
     if from_stdin:
         data = sys.stdin.read()
@@ -46,13 +64,16 @@ def write_evidence(target_path, content=None, from_stdin=False):
         "sha256": sha,
         "status": "SUCCESS"
     }
-    sys.stdout.reconfigure(encoding='utf-8')
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
     print(f"UTF8_WRITTEN: path={rel_path} bytes={size} sha256={sha}")
     return result
 
 def main():
     parser = argparse.ArgumentParser(description="UTF-8 No-BOM Evidence Writer")
-    parser.add_argument("--target", required=True, help="Relative or absolute target path")
+    parser.add_argument("--target", required=True, help="Relative (to workspace root) or absolute target path")
     parser.add_argument("--content", help="Text content to write")
     parser.add_argument("--stdin", action="store_true", help="Read content from stdin")
 

@@ -1,0 +1,123 @@
+{
+  "id": "sec-report-clearfilter-001",
+  "run_id": "RUN-PILOTO-CLEARFILTER",
+  "version": "5.0",
+  "kind": "security-report",
+  "role": "security-reviewer",
+  "status": "submitted",
+  "summary": "Auditoria de seguranca independente do incremento 'Limpar filtros' no Task Manager. Verificacao de zero XSS/innerHTML para entradas de usuario, estrita observancia da Content Security Policy (CSP), isolamento do armazenamento localStorage e preservacao da integridade criptografica SHA-256.",
+  "input_ids": [
+    "build-clearfilter-001"
+  ],
+  "evidence_refs": [
+    "evidence/RUN-PILOTO-CLEARFILTER/security-audit.md",
+    "tests/test_security_audit.js",
+    "tests/test_task_manager.js",
+    "src/index.html",
+    "src/app.js"
+  ],
+  "verdict": "PASS",
+  "execution": {
+    "real_execution": true,
+    "command": "node tests/test_security_audit.js",
+    "exit_code": 0,
+    "output_ref": "evidence/RUN-PILOTO-CLEARFILTER/security-audit.md",
+    "output_sha256": "41ab42a24fa9c1b964f57971710a773e66fc63595cc86332e7de34cacf6f9561",
+    "tool": "node",
+    "version": "22.14.0",
+    "started_at": "2026-10-11T20:14:47Z",
+    "finished_at": "2026-10-11T20:14:48Z",
+    "environment": "Windows 11 / Node.js v22.14.0 / PowerShell 7",
+    "commit_sha": "53178c1b5a359cae0b46419fc2524f4b959109e8"
+  },
+  "sections": {
+    "threats": [
+      {
+        "threat_id": "THREAT-SEC-01",
+        "name": "Cross-Site Scripting (XSS) via Manipulacao de Filtros ou DOM",
+        "description": "Injecao de scripts maliciosos atraves de termos de busca, payloads de tarefas ou atributos manipulados dinamicamente no DOM.",
+        "severity": "HIGH",
+        "mitigation": "Uso exclusivo de textContent e createTextNode para dados dinamicos; zero innerHTML para dados de usuario; estrito type='button' e aria-pressed booleano."
+      },
+      {
+        "threat_id": "THREAT-SEC-02",
+        "name": "Bypass ou Degradacao da Content Security Policy (CSP)",
+        "description": "Inclusao de scripts remotos, estilos perigosos com expressao inline ou adicao de 'unsafe-eval' facilitando execucao de codigo arbitrario.",
+        "severity": "HIGH",
+        "mitigation": "CSP mantida restrita com default-src 'self' e script-src 'self', sem unsafe-eval e sem carregamento de bibliotecas externas."
+      },
+      {
+        "threat_id": "THREAT-SEC-03",
+        "name": "Corrupcao ou Vazamento de Dados no localStorage",
+        "description": "Efeitos colaterais indesejados ao redefinir filtros que possam apagar, alterar ou vazar tarefas gravadas no storage local.",
+        "severity": "MEDIUM",
+        "mitigation": "Operacao de limpeza restrita ao estado em memoria (searchQuery e currentFilter) e elementos visuais de filtro; nenhuma chamada a localStorage.setItem/removeItem no fluxo do botao."
+      },
+      {
+        "threat_id": "THREAT-SEC-04",
+        "name": "Bypass de Integridade Criptografica SHA-256",
+        "description": "Enfraquecimento da validacao criptografica de backup/restauracao por fallbacks fracos ou bypass de integridade.",
+        "severity": "CRITICAL",
+        "mitigation": "calculateSha256 permanece operando em fail-closed com Web Crypto API nativa e validacao estrita de digest com 64 caracteres hexadecimais."
+      }
+    ],
+    "scans": [
+      "automated-security-audit-suite-tests.test_security_audit.js",
+      "static-ast-pattern-scan-src.app.js",
+      "task-manager-regression-suite-tests.test_task_manager.js",
+      "hooks-adversarial-security-suite-tests.test_hooks_adversarial_e.py"
+    ],
+    "scan_outputs": {
+      "test_security_audit": "6/6 controles aprovados com sucesso (CSP, Sinks, textContent, Botão, SHA-256, Vetores XSS)",
+      "test_task_manager": "14/14 testes integrados e acessíveis aprovados (incluindo Teste 14 específico do botão Limpar filtros)",
+      "test_hooks_adversarial_e": "18/18 testes de confinamento de path, isolamento e integridade aprovados (exit code 0)"
+    },
+    "manual_checks": [
+      {
+        "item": "Inspecao de Diff em src/index.html",
+        "verified": true,
+        "detail": "Adicao de elemento button com id='clearFiltersBtn', type='button', aria-label='Limpar filtros e busca', title='Limpar filtros e busca'. Nao ha inline handlers (onclick, onload), nao ha URLs javascript: e o botao integra-se harmonicamente a estrutura acessivel."
+      },
+      {
+        "item": "Inspecao de Diff em src/app.js",
+        "verified": true,
+        "detail": "Implementacao de listener para click e keydown (Enter e Space) associado a clearFiltersBtn. Limpa searchInput.value, redefine searchQuery='' e currentFilter='ALL', sincroniza aria-pressed='true' para ALL e 'false' para demais botoes, executa renderTasks() e emite notifyUser(). Zero uso de innerHTML com conteudo de usuario."
+      },
+      {
+        "item": "Politica de CSP e Ausencia de Sinks Perigosos",
+        "verified": true,
+        "detail": "CSP confirmada com default-src 'self' e script-src 'self'. Ausencia total de eval, Function, document.write, outerHTML e insertAdjacentHTML em todo o arquivo app.js."
+      },
+      {
+        "item": "Imutabilidade de Persistencia no localStorage",
+        "verified": true,
+        "detail": "Snapshot do localStorage antes e depois do acionamento do botao 'Limpar filtros' comprovado identico bit a bit no Teste 14. O botao nao interage com o storage, preservando integralmente todas as tarefas."
+      },
+      {
+        "item": "Integridade Criptografica SHA-256",
+        "verified": true,
+        "detail": "Funcao calculateSha256 mantida fail-closed e isolada. Validacao de integridade no import e export JSON permanece blindada contra corrupcao ou adulteracao maliciosa."
+      }
+    ],
+    "findings": [
+      {
+        "finding_id": "FINDING-SEC-01",
+        "severity": "INFO",
+        "title": "Reset Seguro de Container DOM",
+        "description": "A unica ocorrencia de innerHTML em todo o script app.js ocorre na linha 454 (taskList.innerHTML = '') estritamente para esvaziar o container pai antes da reconstrucao segura via appendChild e textContent. Nao ha risco de XSS nesta construcao."
+      },
+      {
+        "finding_id": "FINDING-SEC-02",
+        "severity": "INFO",
+        "title": "Dependencia de Upstream Artifact (Governança V5.2)",
+        "description": "A analise tecnica e empirica de seguranca do codigo e PASS. Sob a governanca estrita da V5.2, a submissao formal do relatorio de seguranca no state.json requer que o artefato predecessor build seja submetido pelo Developer e aceito pelo revisor independente."
+      }
+    ],
+    "risk_rating": "LOW (codigo auditado, sem vulnerabilidades, controles fail-closed preservados)",
+    "evidence": [
+      "Execucao de node tests/test_security_audit.js (exit_code=0, 6/6 verificacoes aprovadas).",
+      "Execucao de node tests/test_task_manager.js (exit_code=0, 14/14 cenarios aprovados, incluindo Teste 14 de teclado e persistencia).",
+      "Relatorio detalhado de auditoria de seguranca documentado em evidence/RUN-PILOTO-CLEARFILTER/security-audit.md (SHA-256: 41ab42a24fa9c1b964f57971710a773e66fc63595cc86332e7de34cacf6f9561)."
+    ]
+  }
+}
