@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from . import control, memory, telemetry
+from . import control, memory, telemetry, git_ops, test_runner
 from .contracts import load, validate
 
 def main(argv=None):
@@ -41,6 +41,13 @@ def main(argv=None):
     x = sub.add_parser('memory-promote'); addrun(x); x.add_argument('--candidate', required=True); x.add_argument('--reference', required=True)
     x = sub.add_parser('memory-promote-core'); addrun(x); x.add_argument('--candidate', required=True); x.add_argument('--commit', required=True)
     x = sub.add_parser('memory-sync-pending'); addrun(x)
+    x = sub.add_parser('run-tests')
+    x.add_argument('--dir', default='tests')
+    x.add_argument('--pattern', default='test*.py')
+    x = sub.add_parser('git-check'); addrun(x)
+    x.add_argument('--git-action', dest='git_action', required=True, choices=['push', 'merge', 'deploy'])
+    x.add_argument('--target-branch')
+    x.add_argument('--approval-ref')
     
     a = p.parse_args(argv)
     root = Path(a.root).resolve()
@@ -84,6 +91,10 @@ def main(argv=None):
             result = memory.promote_core(root, a.run, a.candidate, a.commit)
         elif a.action == 'memory-sync-pending':
             result = memory.sync_pending_core(root, a.run)
+        elif a.action == 'run-tests':
+            result = test_runner.run_test_suite(a.dir, pattern=a.pattern, cwd=root)
+        elif a.action == 'git-check':
+            result = git_ops.verify_git_action_authorization(root, a.git_action, a.target_branch, a.run, a.approval_ref)
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, OSError, KeyError, json.JSONDecodeError) as e:
         p.exit(2, 'DENIED: ' + str(e) + '\n')

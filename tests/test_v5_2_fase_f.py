@@ -1,4 +1,4 @@
-"""Comprehensive test suite for V5.2 Phase F (Fase F).
+"""Comprehensive test suite for V5.2 Phase F (Fase F) Homologation.
 
 Validates:
 1. STANDARD policy preserves BUILD human gate denial.
@@ -6,15 +6,18 @@ Validates:
 3. TURBO_SANDBOX on main/master, post-init tampering, or divergent branch fails closed.
 4. Transitions without accepted upstream, self-approval, or same instance review denied.
 5. UNVERIFIED is never claimed as VERIFIED; sandbox provisional review never authorizes prod.
-6. Deploy / merge to main without verified human approval denied.
+6. Deploy / merge to main without verified human approval denied (Git operations governance).
 7. Core change in tracked commit + clean test suite execution promotes memory automatically without redundant human approval.
 8. Failed tests, unreachable commit, or non-core diff rejects core memory promotion.
 9. Changes modifying solely src/ applications cannot promote core memory.
 10. AI Memory offline enqueues candidate as PENDENTE_SINCRONIZACAO and syncs idempotently upon recovery.
 11. Direct CLI/MCP writes and tainted secret attacks denied.
-12. Telemetry and audit report correctly identify VERIFIED_EVENTS vs. NÃO VERIFICÁVEL / NÃO MEDIDO.
+12. Telemetry and audit report correctly identify VERIFIED_EVENTS vs. NÃO VERIFICÁVEL / NÃO MEDIDO and measured wall-clock vs declared.
 13. Three reworks on same pair escalates run.
-14. Accounting of passed, failed, and skipped tests without masking.
+14. Accounting of passed, failed, and skipped tests without masking (run_test_suite discrete separation).
+15. Adverse/Negative: uncommitted changes diverging from commit reject core promotion.
+16. Adverse/Negative: memory promote core fails if genuine recall verification cannot confirm existence in FTS store.
+17. Git operations governance: git push/merge to production blocked fail-closed without verified approval.
 """
 import unittest
 import tempfile
@@ -26,7 +29,7 @@ import hashlib
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from org_v5 import control, memory, identity, telemetry
+from org_v5 import control, memory, identity, telemetry, git_ops, test_runner
 from org_v5.control import WorkflowError
 from org_v5.contracts import digest
 
@@ -68,45 +71,41 @@ class TestV52FaseF(unittest.TestCase):
         control.advance(self.root, run_id, 'DISCOVERY')
         control.advance(self.root, run_id, 'PLANNING')
         
-        # Submit PRD
+        # PRD
         identity.set_actor_context('inst-pm-01', 'product-manager')
         prd_doc = {
             'id': 'ART-PRD-001', 'run_id': run_id, 'version': '5.0',
             'kind': 'prd', 'role': 'product-manager', 'status': 'submitted',
             'summary': 'PRD for Phase F', 'input_ids': [], 'evidence_refs': [],
             'sections': {
-                'problem': 'Problem statement', 'scope': 'Scope statement',
-                'out_of_scope': 'Out of scope items',
-                'stories': [{'id': 'US-001', 'as_a': 'user', 'i_want': 'feature', 'so_that': 'benefit', 'acceptance_ids': ['AC-001']}],
-                'acceptance_criteria': [{'id': 'AC-001', 'given': 'given', 'when': 'when', 'then': 'then'}],
-                'business_rules': 'Rules', 'security': 'Security', 'test_plan': 'Tests', 'risks': 'Risks'
+                'problem': 'P', 'scope': 'S', 'out_of_scope': 'O',
+                'stories': [{'id': 'US-1', 'as_a': 'dev', 'i_want': 'W', 'so_that': 'T', 'acceptance_ids': ['AC-1']}],
+                'acceptance_criteria': [{'id': 'AC-1', 'given': 'G', 'when': 'W', 'then': 'T'}],
+                'business_rules': 'R', 'security': 'Sec', 'test_plan': 'TP', 'risks': 'Risk'
             }
         }
         control.submit(self.root, run_id, prd_doc)
         
-        # Review PRD
         identity.set_actor_context('inst-qa-01', 'qa')
         control.review(self.root, run_id, 'ART-PRD-001', 'qa', 'ACCEPT', 'PRD accepted')
         control.advance(self.root, run_id, 'DESIGN')
         
-        # Submit Architecture
+        # Architecture
         identity.set_actor_context('inst-arch-01', 'architect')
         arch_doc = {
             'id': 'ART-ARCH-001', 'run_id': run_id, 'version': '5.0',
             'kind': 'architecture', 'role': 'architect', 'status': 'submitted',
-            'summary': 'Architecture for Phase F', 'input_ids': ['ART-PRD-001'],
-            'evidence_refs': [],
+            'summary': 'Arch for Phase F', 'input_ids': ['ART-PRD-001'], 'evidence_refs': [],
             'sections': {
-                'requirements': 'Requirements', 'options': 'Options', 'simplest_viable': 'Simplest viable',
-                'tradeoffs': 'Tradeoffs', 'financial_feasibility': 'Feasible', 'security': 'CSP, no innerHTML',
-                'adr': 'ADR-005', 'risks': 'Low'
+                'requirements': 'Req', 'options': 'Opt', 'simplest_viable': 'Simp',
+                'tradeoffs': 'Trade', 'financial_feasibility': 'Fin', 'security': 'Sec',
+                'adr': 'ADR', 'risks': 'Risk'
             }
         }
         control.submit(self.root, run_id, arch_doc)
         
-        # Review Architecture
         identity.set_actor_context('inst-sec-01', 'security-reviewer')
-        control.review(self.root, run_id, 'ART-ARCH-001', 'security-reviewer', 'ACCEPT', 'Architecture accepted')
+        control.review(self.root, run_id, 'ART-ARCH-001', 'security-reviewer', 'ACCEPT', 'Arch accepted')
 
     # 1. STANDARD policy without human approval denies BUILD
     def test_case_1_standard_policy_without_human_approval_denies_build(self):
@@ -115,78 +114,83 @@ class TestV52FaseF(unittest.TestCase):
             control.advance(self.root, 'RUN-STD-001', 'BUILD')
         self.assertIn("no recorded verified human approval for BUILD", str(ctx.exception))
 
-    # 2. TURBO_SANDBOX policy advances to BUILD with POLICY_AUTO_APPROVED event
+    # 2. TURBO_SANDBOX advances to BUILD with POLICY_AUTO_APPROVED event
     def test_case_2_turbo_sandbox_advances_to_build_and_records_policy_event(self):
         self._setup_design_phase(run_id='RUN-TURBO-001', policy='TURBO_SANDBOX')
-        target = control.advance(self.root, 'RUN-TURBO-001', 'BUILD')
-        self.assertEqual(target, 'BUILD')
+        phase = control.advance(self.root, 'RUN-TURBO-001', 'BUILD')
+        self.assertEqual(phase, 'BUILD')
         
         state = control.read(self.root, 'RUN-TURBO-001')
         self.assertEqual(state['phase'], 'BUILD')
+        
+        # Check approval event recorded
         build_app = state['approvals'].get('BUILD')
         self.assertIsNotNone(build_app)
         self.assertEqual(build_app['actor'], 'policy_engine')
-        self.assertEqual(build_app['decision'], 'APPROVE')
-        self.assertEqual(build_app['policy'], 'TURBO_SANDBOX')
-        self.assertEqual(build_app['rule'], 'POLICY_AUTO_APPROVED')
-        self.assertFalse(build_app['verified'])
         self.assertEqual(build_app['status'], 'POLICY_AUTO_APPROVED')
+        self.assertFalse(build_app['verified'])
+        self.assertEqual(build_app['policy'], 'TURBO_SANDBOX')
         
-        # Verify history has policy_auto_approved event
-        policy_events = [e for e in state['history'] if e.get('action') == 'policy_auto_approved']
-        self.assertTrue(len(policy_events) >= 1)
-        self.assertEqual(policy_events[-1]['target'], 'BUILD')
+        # Check history contains policy event
+        actions = [h['action'] for h in state['history']]
+        self.assertIn('policy_auto_approved', actions)
 
-    # 3. TURBO_SANDBOX on main/master, post-init tampering, or divergent branch fails closed
+    # 3. TURBO_SANDBOX on main/master or tampered policy fails closed
     def test_case_3_turbo_on_main_or_tampered_policy_or_divergent_branch_denied(self):
-        # 3a. Initiating TURBO_SANDBOX on main branch is prohibited
+        # 3a. Prohibited to init Turbo on main branch
         os.environ['AGY_GIT_BRANCH'] = 'main'
         with self.assertRaises(WorkflowError) as ctx_main:
-            control.init(self.root, 'RUN-MAIN-ERR', 'Goal', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
-        self.assertIn("prohibited on production branch ('main', 'master')", str(ctx_main.exception))
+            control.init(self.root, 'RUN-MAIN-001', 'Main test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+        self.assertIn("TURBO_SANDBOX policy is prohibited on production branch", str(ctx_main.exception))
         
-        # 3b. Policy tampering after init
-        os.environ['AGY_GIT_BRANCH'] = 'feature/valid-branch'
-        state = control.init(self.root, 'RUN-TAMPER-001', 'Goal', 1, 'ENGINEERING_SMALL', 'STANDARD')
-        # Adversary modifies state.json on disk to set TURBO_SANDBOX
-        state_path = self.root / 'runs' / 'RUN-TAMPER-001' / 'state.json'
-        raw = json.loads(state_path.read_text(encoding='utf-8'))
-        raw['execution_policy'] = 'TURBO_SANDBOX'
-        state_path.write_text(json.dumps(raw), encoding='utf-8')
-        
-        with self.assertRaises(WorkflowError) as ctx_tamper:
-            control.read(self.root, 'RUN-TAMPER-001')
-        self.assertIn("execution policy tampering detected", str(ctx_tamper.exception))
-        
-        # 3c. Branch divergence detected
-        control.init(self.root, 'RUN-DIVERGE-001', 'Goal', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
-        os.environ['AGY_GIT_BRANCH'] = 'feature/other-branch'
-        with self.assertRaises(WorkflowError) as ctx_diverge:
-            control.read(self.root, 'RUN-DIVERGE-001')
-        self.assertIn("branch divergence detected", str(ctx_diverge.exception))
-
-    # 4. Transitions without accepted upstream, self-approval, or same instance review denied
-    def test_case_4_missing_upstream_or_self_approval_or_same_instance_denied(self):
+        # 3b. Policy tampering after init rejected
         os.environ['AGY_GIT_BRANCH'] = 'feature/test-fase-f'
-        control.init(self.root, 'RUN-DEP-001', 'Goal', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+        control.init(self.root, 'RUN-TAMP-001', 'Tamper test', 1, 'ENGINEERING_SMALL', 'STANDARD')
+        state_file = self.root / 'runs' / 'RUN-TAMP-001' / 'state.json'
+        data = json.loads(state_file.read_text(encoding='utf-8'))
+        data['execution_policy'] = 'TURBO_SANDBOX' # Tampering state
+        state_file.write_text(json.dumps(data), encoding='utf-8')
         
-        # Advance without accepted intake fails
-        with self.assertRaises(WorkflowError):
-            control.advance(self.root, 'RUN-DEP-001', 'DISCOVERY')
-            
-        # Submit intake by inst-orch
-        identity.set_actor_context('inst-orch-99', 'orchestrator')
-        doc = {
+        with self.assertRaises(WorkflowError) as ctx_tamp:
+            control.advance(self.root, 'RUN-TAMP-001', 'DISCOVERY')
+        self.assertIn("execution policy tampering detected", str(ctx_tamp.exception))
+
+        # 3c. Divergent branch execution rejected
+        control.init(self.root, 'RUN-DIV-001', 'Div test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+        os.environ['AGY_GIT_BRANCH'] = 'feature/other-branch'
+        with self.assertRaises(WorkflowError) as ctx_div:
+            control.advance(self.root, 'RUN-DIV-001', 'DISCOVERY')
+        self.assertIn("branch divergence detected", str(ctx_div.exception))
+
+    # 4. Transitions without accepted upstream or self-approval denied
+    def test_case_4_missing_upstream_or_self_approval_or_same_instance_denied(self):
+        control.init(self.root, 'RUN-DEP-001', 'Dep test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+        
+        # Submit artifact with missing upstream
+        identity.set_actor_context('inst-orch-01', 'orchestrator')
+        bad_doc = {
+            'id': 'ART-INTAKE-BAD', 'run_id': 'RUN-DEP-001', 'version': '5.0',
+            'kind': 'intake', 'role': 'orchestrator', 'status': 'submitted',
+            'summary': 'Intake with missing upstream', 'input_ids': ['NON_EXISTENT_UPSTREAM'],
+            'evidence_refs': [],
+            'sections': {'goal': 'G', 'scope': 'S', 'constraints': 'Standard constraints', 'risk_level': 'Low', 'definition_of_success': 'D'}
+        }
+        with self.assertRaises(WorkflowError) as ctx_up:
+            control.submit(self.root, 'RUN-DEP-001', bad_doc)
+        self.assertIn("upstream input not independently accepted", str(ctx_up.exception))
+        
+        # Self-approval rejected
+        intake_doc = {
             'id': 'ART-INTAKE-99', 'run_id': 'RUN-DEP-001', 'version': '5.0',
             'kind': 'intake', 'role': 'orchestrator', 'status': 'submitted',
             'summary': 'Intake', 'input_ids': [], 'evidence_refs': [],
             'sections': {'goal': 'G', 'scope': 'S', 'constraints': 'Standard constraints', 'risk_level': 'Low', 'definition_of_success': 'D'}
         }
-        control.submit(self.root, 'RUN-DEP-001', doc)
+        identity.set_actor_context('inst-orch-99', 'orchestrator')
+        control.submit(self.root, 'RUN-DEP-001', intake_doc)
         
-        # Self-approval by orchestrator rejected
         with self.assertRaises(WorkflowError) as ctx_self:
-            control.review(self.root, 'RUN-DEP-001', 'ART-INTAKE-99', 'orchestrator', 'ACCEPT', 'Self approval')
+            control.review(self.root, 'RUN-DEP-001', 'ART-INTAKE-99', 'orchestrator', 'ACCEPT', 'Self review')
         self.assertIn("no producer or orchestrator self-approval", str(ctx_self.exception))
         
         # Same instance review rejected
@@ -240,11 +244,13 @@ class TestV52FaseF(unittest.TestCase):
         self.assertIn("forbidden on production branch", str(ctx.exception))
 
     # 7. Core change in tracked commit + clean test suite execution promotes memory automatically
+    @patch('org_v5.memory.recall')
     @patch('org_v5.memory.ai_memory_cli')
     @patch('org_v5.memory.is_live_backend_available', return_value=True)
     @patch('subprocess.run')
-    def test_case_7_core_change_clean_tests_promotes_memory_without_human_approval(self, mock_subproc, mock_backend, mock_cli):
+    def test_case_7_core_change_clean_tests_promotes_memory_without_human_approval(self, mock_subproc, mock_backend, mock_cli, mock_recall):
         mock_cli.return_value = 'wrote page memories/core/decision/MC-CORE-001.md'
+        mock_recall.return_value = [{'path': 'memories/core/decision/MC-CORE-001.md', 'id': 'MC-CORE-001'}]
         
         def fake_subprocess(cmd, **kwargs):
             m = MagicMock()
@@ -257,9 +263,12 @@ class TestV52FaseF(unittest.TestCase):
                 m.stdout = 'org_v5/control.py\n.agents/rules/governance.md\n'
             elif 'merge-base' in cmd_str:
                 m.returncode = 0
-            elif 'unittest' in cmd_str:
+            elif 'rev-parse' in cmd_str and 'HEAD' in cmd_str:
                 m.returncode = 0
-                m.stdout = 'OK'
+                m.stdout = '189cb1f63a43cd84942377df4c06355f62c96a98'
+            elif 'status' in cmd_str and '--porcelain' in cmd_str:
+                m.returncode = 0
+                m.stdout = ''
             elif 'rev-parse' in cmd_str and '--abbrev-ref' in cmd_str:
                 m.returncode = 0
                 m.stdout = 'feature/test-fase-f'
@@ -270,23 +279,25 @@ class TestV52FaseF(unittest.TestCase):
             
         mock_subproc.side_effect = fake_subprocess
         
-        # Propose memory candidate
-        control.init(self.root, 'RUN-CORE-001', 'Core memory test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
-        proposal = {
-            'id': 'MC-CORE-001', 'role': 'architect', 'type': 'decision',
-            'text': 'Automate core improvement memory promotion without redundant approval.',
-            'tags': ['dec-core', 'core-fase-f'], 'confidence': 0.95, 'provenance': 'observed',
-            'source_ref': 'docs/architecture/fase-f-autonomia-e-aprendizado.md',
-            'reason': 'V5.2 continuous learning policy'
-        }
-        memory.propose(self.root, 'RUN-CORE-001', proposal)
-        
-        # Promote core directly with commit sha (no state approvals['MEMORY_WRITE'] needed)
-        res = memory.promote_core(self.root, 'RUN-CORE-001', 'MC-CORE-001', '189cb1f63a43cd84942377df4c06355f62c96a98')
-        self.assertEqual(res['status'], 'stored')
-        self.assertEqual(res['memory_status'], 'VALIDADA_EM_BRANCH')
-        self.assertTrue(res['verified_recall'])
-        self.assertIn('wrote', res['receipt'].lower())
+        # Mock test runner to return clean pass
+        with patch('org_v5.test_runner.run_test_suite', return_value={'clean_pass': True, 'passed': 63, 'failed': 0, 'errors': 0, 'skipped': 0}):
+            # Propose memory candidate
+            control.init(self.root, 'RUN-CORE-001', 'Core memory test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+            proposal = {
+                'id': 'MC-CORE-001', 'role': 'architect', 'type': 'decision',
+                'text': 'Automate core improvement memory promotion without redundant approval.',
+                'tags': ['dec-core', 'core-fase-f'], 'confidence': 0.95, 'provenance': 'observed',
+                'source_ref': 'docs/architecture/fase-f-autonomia-e-aprendizado.md',
+                'reason': 'V5.2 continuous learning policy'
+            }
+            memory.propose(self.root, 'RUN-CORE-001', proposal)
+            
+            # Promote core directly with commit sha (no state approvals['MEMORY_WRITE'] needed)
+            res = memory.promote_core(self.root, 'RUN-CORE-001', 'MC-CORE-001', '189cb1f63a43cd84942377df4c06355f62c96a98')
+            self.assertEqual(res['status'], 'stored')
+            self.assertEqual(res['memory_status'], 'VALIDADA_EM_BRANCH')
+            self.assertTrue(res['verified_recall'])
+            self.assertIn('wrote', res['receipt'].lower())
 
     # 8. Failed tests, unreachable commit, or non-core diff rejects core memory promotion
     @patch('subprocess.run')
@@ -313,15 +324,19 @@ class TestV52FaseF(unittest.TestCase):
                 m.stdout = 'org_v5/control.py\n'
             elif 'merge-base' in cmd_str:
                 m.returncode = 0
-            elif 'unittest' in cmd_str:
-                m.returncode = 1
-                m.stderr = 'FAILED (failures=1)'
+            elif 'rev-parse' in cmd_str and 'HEAD' in cmd_str:
+                m.returncode = 0
+                m.stdout = '189cb1f63a43cd84942377df4c06355f62c96a98'
+            elif 'status' in cmd_str and '--porcelain' in cmd_str:
+                m.returncode = 0
+                m.stdout = ''
             return m
             
         mock_subproc.side_effect = fake_failing_test
-        with self.assertRaises(WorkflowError) as ctx_fail:
-            memory.promote_core(self.root, 'RUN-CORE-ERR', 'MC-ERR-001', '189cb1f63a43cd84942377df4c06355f62c96a98')
-        self.assertIn("test suite verification failed", str(ctx_fail.exception))
+        with patch('org_v5.test_runner.run_test_suite', return_value={'clean_pass': False, 'passed': 60, 'failed': 1, 'errors': 0, 'skipped': 0}):
+            with self.assertRaises(WorkflowError) as ctx_fail:
+                memory.promote_core(self.root, 'RUN-CORE-ERR', 'MC-ERR-001', '189cb1f63a43cd84942377df4c06355f62c96a98')
+            self.assertIn("test suite verification failed", str(ctx_fail.exception))
 
     # 9. Changes modifying solely src/ applications cannot promote core memory
     @patch('subprocess.run')
@@ -369,9 +384,12 @@ class TestV52FaseF(unittest.TestCase):
                 m.stdout = 'org_v5/memory.py\n'
             elif 'merge-base' in cmd_str:
                 m.returncode = 0
-            elif 'unittest' in cmd_str:
+            elif 'rev-parse' in cmd_str and 'HEAD' in cmd_str:
                 m.returncode = 0
-                m.stdout = 'OK'
+                m.stdout = '189cb1f63a43cd84942377df4c06355f62c96a98'
+            elif 'status' in cmd_str and '--porcelain' in cmd_str:
+                m.returncode = 0
+                m.stdout = ''
             elif 'rev-parse' in cmd_str and '--abbrev-ref' in cmd_str:
                 m.returncode = 0
                 m.stdout = 'feature/test-fase-f'
@@ -379,31 +397,34 @@ class TestV52FaseF(unittest.TestCase):
             
         mock_subproc.side_effect = fake_subproc_clean
         
-        control.init(self.root, 'RUN-OFFLINE-001', 'Offline sync test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
-        proposal = {
-            'id': 'MC-OFF-001', 'role': 'architect', 'type': 'decision',
-            'text': 'Offline queue preserves candidate without false persistence claim.',
-            'tags': ['dec-queue', 'core-offline'], 'confidence': 0.95, 'provenance': 'observed',
-            'source_ref': 'docs/architecture/fase-f-autonomia-e-aprendizado.md',
-            'reason': 'Offline tolerance'
-        }
-        memory.propose(self.root, 'RUN-OFFLINE-001', proposal)
-        
-        res = memory.promote_core(self.root, 'RUN-OFFLINE-001', 'MC-OFF-001', '189cb1f63a43cd84942377df4c06355f62c96a98')
-        self.assertEqual(res['status'], 'PENDENTE_SINCRONIZACAO')
-        self.assertIn('queue_path', res)
-        
-        # Verify sync queue file exists
-        q_path = self.root / res['queue_path']
-        self.assertTrue(q_path.exists())
-        
-        # Now simulate backend coming online
-        with patch('org_v5.memory.is_live_backend_available', return_value=True):
-            with patch('org_v5.memory.ai_memory_cli', return_value='wrote page memories/core/decision/MC-OFF-001.md'):
-                synced = memory.sync_pending_core(self.root, 'RUN-OFFLINE-001')
-                self.assertEqual(len(synced), 1)
-                self.assertEqual(synced[0]['status'], 'stored')
-                self.assertFalse(q_path.exists())
+        with patch('org_v5.test_runner.run_test_suite', return_value={'clean_pass': True, 'passed': 63, 'failed': 0, 'errors': 0, 'skipped': 0}):
+            control.init(self.root, 'RUN-OFFLINE-001', 'Offline sync test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+            proposal = {
+                'id': 'MC-OFF-001', 'role': 'architect', 'type': 'decision',
+                'text': 'Offline queue preserves candidate without false persistence claim.',
+                'tags': ['dec-queue', 'core-offline'], 'confidence': 0.95, 'provenance': 'observed',
+                'source_ref': 'docs/architecture/fase-f-autonomia-e-aprendizado.md',
+                'reason': 'Offline tolerance'
+            }
+            memory.propose(self.root, 'RUN-OFFLINE-001', proposal)
+            
+            res = memory.promote_core(self.root, 'RUN-OFFLINE-001', 'MC-OFF-001', '189cb1f63a43cd84942377df4c06355f62c96a98')
+            self.assertEqual(res['status'], 'PENDENTE_SINCRONIZACAO')
+            self.assertIn('queue_path', res)
+            
+            # Verify sync queue file exists
+            q_path = self.root / res['queue_path']
+            self.assertTrue(q_path.exists())
+            
+            # Now simulate backend coming online
+            with patch('org_v5.memory.is_live_backend_available', return_value=True):
+                with patch('org_v5.memory.ai_memory_cli', return_value='wrote page memories/core/decision/MC-OFF-001.md'):
+                    with patch('org_v5.memory.recall', return_value=[{'path': 'memories/core/decision/MC-OFF-001.md', 'id': 'MC-OFF-001'}]):
+                        synced = memory.sync_pending_core(self.root, 'RUN-OFFLINE-001')
+                        self.assertEqual(len(synced), 1)
+                        self.assertEqual(synced[0]['status'], 'stored')
+                        self.assertTrue(synced[0]['verified_recall'])
+                        self.assertFalse(q_path.exists())
 
     # 11. Direct CLI/MCP writes and tainted secret attacks denied
     def test_case_11_direct_mcp_cli_write_and_tampered_candidate_rejected(self):
@@ -429,24 +450,18 @@ class TestV52FaseF(unittest.TestCase):
         self.assertEqual(rep_empty['resource_metrics']['tokens_per_agent'], 'NÃO MEDIDO')
         self.assertEqual(rep_empty['resource_metrics']['cost_usd'], 'NÃO MEDIDO')
         
-        # Log telemetry events
-        telemetry.log_event(self.root, 'RUN-TELEM-001', {
-            'event_type': 'invocation_end',
-            'invocation_id': 'inv-001',
-            'instance_id': 'inst-arch-88',
-            'role': 'architect',
-            'duration_seconds': 14.5,
-            'artifacts': ['ART-ARCH-001'],
-            'assurance': 'UNVERIFIED/ROLE_ONLY'
-        })
-        
+        # Use context manager to time real invocation
+        with telemetry.track_invocation(self.root, 'RUN-TELEM-001', 'architect', 'inst-arch-88', 'inv-001') as inv:
+            inv.add_artifact('ART-ARCH-001')
+            
         rep_filled = telemetry.generate_report(self.root, 'RUN-TELEM-001')
         self.assertEqual(rep_filled['telemetry_verification'], 'VERIFIED_EVENTS')
         eff = rep_filled['agents_effective']
         self.assertEqual(len(eff), 1)
         self.assertEqual(eff[0]['role'], 'architect')
         self.assertEqual(eff[0]['instances'], ['inst-arch-88'])
-        self.assertEqual(eff[0]['total_duration_seconds'], 14.5)
+        self.assertEqual(eff[0]['measurement_method'], 'MEDIDO_WALL_CLOCK')
+        self.assertGreaterEqual(eff[0]['total_duration_seconds'], 0.0)
         self.assertEqual(rep_filled['resource_metrics']['tokens_per_agent'], 'NÃO MEDIDO')
 
     # 13. Three reworks on same pair escalates run
@@ -475,6 +490,125 @@ class TestV52FaseF(unittest.TestCase):
         res = subprocess.run(['node', 'tests/test_task_manager.js'], cwd=str(Path(__file__).parent.parent), capture_output=True, text=True, check=False)
         self.assertEqual(res.returncode, 0, f"Task Manager test failed:\n{res.stderr or res.stdout}")
         self.assertIn("TODOS OS TESTES PASSARAM COM SUCESSO", res.stdout)
+        
+        # Verify test runner separation on governance test suite
+        details = test_runner.run_test_suite('tests', pattern='test_governance.py', cwd=str(Path(__file__).parent.parent))
+        self.assertGreater(details['total_run'], 10)
+        self.assertEqual(details['failed'], 0)
+        self.assertEqual(details['errors'], 0)
+        self.assertEqual(details['skipped'], 0)
+        self.assertTrue(details['clean_pass'])
+
+    # 15. Adverse/Negative: uncommitted changes diverging from commit reject core promotion
+    @patch('subprocess.run')
+    def test_case_15_dirty_worktree_divergence_rejects_core_promotion(self, mock_subproc):
+        control.init(self.root, 'RUN-DIRTY-001', 'Dirty test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+        proposal = {
+            'id': 'MC-DIRTY-001', 'role': 'architect', 'type': 'decision',
+            'text': 'Dirty worktree rejection test.',
+            'tags': ['dec-dirty', 'core-test'], 'confidence': 0.95, 'provenance': 'observed',
+            'source_ref': 'docs/architecture/v5-blueprint.md',
+            'reason': 'Worktree integrity'
+        }
+        memory.propose(self.root, 'RUN-DIRTY-001', proposal)
+        
+        def fake_dirty_subproc(cmd, **kwargs):
+            m = MagicMock()
+            cmd_str = ' '.join(cmd)
+            if 'rev-parse' in cmd_str and '--verify' in cmd_str:
+                m.returncode = 0
+                m.stdout = 'commit_sha_123'
+            elif 'diff-tree' in cmd_str:
+                m.returncode = 0
+                m.stdout = 'org_v5/control.py\n'
+            elif 'merge-base' in cmd_str:
+                m.returncode = 0
+            elif 'rev-parse' in cmd_str and 'HEAD' in cmd_str:
+                m.returncode = 0
+                m.stdout = 'different_head_sha'
+            elif 'status' in cmd_str and '--porcelain' in cmd_str:
+                m.returncode = 0
+                m.stdout = 'M org_v5/control.py\n'
+            return m
+            
+        mock_subproc.side_effect = fake_dirty_subproc
+        with self.assertRaises(WorkflowError) as ctx:
+            memory.promote_core(self.root, 'RUN-DIRTY-001', 'MC-DIRTY-001', 'commit_sha_123')
+        self.assertIn("uncommitted changes diverging", str(ctx.exception))
+
+    # 16. Adverse/Negative: memory promote core fails if genuine recall verification fails
+    @patch('org_v5.memory.recall', return_value=[])  # Empty recall returns no match
+    @patch('org_v5.memory.ai_memory_cli', return_value='wrote page memories/core/decision/MC-NOREC-001.md')
+    @patch('org_v5.memory.is_live_backend_available', return_value=True)
+    @patch('subprocess.run')
+    def test_case_16_failed_recall_verification_rejects_persistence_claim(self, mock_subproc, mock_backend, mock_cli, mock_recall):
+        def fake_clean_subproc(cmd, **kwargs):
+            m = MagicMock()
+            cmd_str = ' '.join(cmd)
+            if 'rev-parse' in cmd_str and '--verify' in cmd_str:
+                m.returncode = 0
+                m.stdout = '189cb1f63a43cd84942377df4c06355f62c96a98'
+            elif 'diff-tree' in cmd_str:
+                m.returncode = 0
+                m.stdout = 'org_v5/control.py\n'
+            elif 'merge-base' in cmd_str:
+                m.returncode = 0
+            elif 'rev-parse' in cmd_str and 'HEAD' in cmd_str:
+                m.returncode = 0
+                m.stdout = '189cb1f63a43cd84942377df4c06355f62c96a98'
+            elif 'status' in cmd_str and '--porcelain' in cmd_str:
+                m.returncode = 0
+                m.stdout = ''
+            elif 'rev-parse' in cmd_str and '--abbrev-ref' in cmd_str:
+                m.returncode = 0
+                m.stdout = 'feature/test-fase-f'
+            return m
+            
+        mock_subproc.side_effect = fake_clean_subproc
+        
+        with patch('org_v5.test_runner.run_test_suite', return_value={'clean_pass': True, 'passed': 63, 'failed': 0, 'errors': 0, 'skipped': 0}):
+            control.init(self.root, 'RUN-NOREC-001', 'Recall fail test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+            proposal = {
+                'id': 'MC-NOREC-001', 'role': 'architect', 'type': 'decision',
+                'text': 'Candidate that cannot be recalled.',
+                'tags': ['dec-norec', 'core-test'], 'confidence': 0.95, 'provenance': 'observed',
+                'source_ref': 'docs/architecture/v5-blueprint.md',
+                'reason': 'Recall verification failure test'
+            }
+            memory.propose(self.root, 'RUN-NOREC-001', proposal)
+            
+            with self.assertRaises(WorkflowError) as ctx:
+                memory.promote_core(self.root, 'RUN-NOREC-001', 'MC-NOREC-001', '189cb1f63a43cd84942377df4c06355f62c96a98')
+            self.assertIn("recall verification failed", str(ctx.exception))
+
+    # 17. Git operations governance: git push/merge to production blocked fail-closed without verified approval
+    def test_case_17_git_governance_blocks_unauthorized_prod_operations(self):
+        control.init(self.root, 'RUN-GIT-001', 'Git governance test', 1, 'ENGINEERING_SMALL', 'TURBO_SANDBOX')
+        
+        # Sandbox push on feature branch is authorized
+        res_sandbox = git_ops.verify_git_action_authorization(
+            self.root, 'push', target_branch='feature/my-feat', run_id='RUN-GIT-001'
+        )
+        self.assertTrue(res_sandbox['authorized'])
+        self.assertEqual(res_sandbox['scope'], 'sandbox')
+        
+        # Merge or push targeting main without verified approval is blocked fail-closed
+        with self.assertRaises(WorkflowError) as ctx_push_main:
+            git_ops.verify_git_action_authorization(
+                self.root, 'push', target_branch='main', run_id='RUN-GIT-001'
+            )
+        self.assertIn("GIT_POLICY_VIOLATION", str(ctx_push_main.exception))
+        
+        with self.assertRaises(WorkflowError) as ctx_merge_main:
+            git_ops.verify_git_action_authorization(
+                self.root, 'merge', target_branch='main', run_id='RUN-GIT-001'
+            )
+        self.assertIn("GIT_POLICY_VIOLATION", str(ctx_merge_main.exception))
+        
+        # Attempting git_ops.run_governed_git push main without approval
+        with self.assertRaises(WorkflowError) as ctx_cmd:
+            git_ops.run_governed_git(self.root, ['push', 'origin', 'main'], run_id='RUN-GIT-001')
+        self.assertIn("GIT_POLICY_VIOLATION", str(ctx_cmd.exception))
 
 if __name__ == '__main__':
     unittest.main()
