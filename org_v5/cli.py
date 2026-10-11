@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from . import control, memory, telemetry, git_ops, test_runner
@@ -17,14 +18,14 @@ def main(argv=None):
     p.add_argument('--root', default='.', help='project root (contains runs/)')
     sub = p.add_subparsers(dest='action', required=True)
     def addrun(parser): parser.add_argument('--run', required=True)
-    
+
     x = sub.add_parser('init')
     addrun(x)
     x.add_argument('--goal', required=True)
     x.add_argument('--level', type=int, required=True)
     x.add_argument('--mode', default='ENGINEERING_SMALL')
     x.add_argument('--policy', default='STANDARD', choices=['STANDARD', 'TURBO_SANDBOX'])
-    
+
     x = sub.add_parser('status'); addrun(x)
     x = sub.add_parser('report'); addrun(x)
     x = sub.add_parser('validate'); x.add_argument('file')
@@ -48,9 +49,19 @@ def main(argv=None):
     x.add_argument('--git-action', dest='git_action', required=True, choices=['push', 'merge', 'deploy'])
     x.add_argument('--target-branch')
     x.add_argument('--approval-ref')
-    
+
     a = p.parse_args(argv)
     root = Path(a.root).resolve()
+
+    # Propagate run context to environment and runs/CURRENT
+    if hasattr(a, 'run') and a.run:
+        os.environ['AGY_RUN_ID'] = a.run
+        try:
+            (root / 'runs').mkdir(parents=True, exist_ok=True)
+            (root / 'runs' / 'CURRENT').write_text(a.run, encoding='utf-8')
+        except Exception:
+            pass
+
     try:
         if a.action == 'init':
             result = control.init(root, a.run, a.goal, a.level, a.mode, a.policy)

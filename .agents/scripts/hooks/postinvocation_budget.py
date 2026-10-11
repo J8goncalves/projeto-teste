@@ -2,10 +2,31 @@ import sys
 import json
 import os
 import datetime
+from pathlib import Path
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-workspace_root = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
-os.chdir(workspace_root)
+def resolve_workspace_root(data):
+    wp = data.get("workspacePaths", [])
+    if wp and isinstance(wp, list) and wp[0]:
+        return Path(wp[0]).resolve()
+    return Path(__file__).resolve().parents[3]
+
+def resolve_run_id(data, workspace_root):
+    env_run = os.environ.get("AGY_RUN_ID", "").strip()
+    if env_run:
+        return env_run
+    for k in ("runId", "run_id", "run"):
+        val = str(data.get(k, "")).strip()
+        if val:
+            return val
+    curr_file = workspace_root / "runs" / "CURRENT"
+    if curr_file.exists():
+        try:
+            cand = curr_file.read_text(encoding="utf-8").strip()
+            if cand and (workspace_root / "runs" / cand).is_dir():
+                return cand
+        except Exception:
+            pass
+    return None
 
 def main():
     try:
@@ -16,23 +37,21 @@ def main():
     try:
         raw_input = sys.stdin.read()
         data = json.loads(raw_input) if raw_input.strip() else {}
+        workspace_root = resolve_workspace_root(data)
         invocation_num = data.get("invocationNum", 0)
         conversation_id = data.get("conversationId", "unknown")
 
-        current_run = None
-        if os.path.exists("runs/CURRENT"):
-            with open("runs/CURRENT", "r", encoding="utf-8") as f:
-                current_run = f.read().strip()
+        current_run = resolve_run_id(data, workspace_root)
 
         if current_run:
-            run_dir = f"runs/{current_run}"
-            os.makedirs(run_dir, exist_ok=True)
-            usage_file = os.path.join(run_dir, "usage.jsonl")
+            run_dir = workspace_root / "runs" / current_run
+            run_dir.mkdir(parents=True, exist_ok=True)
+            usage_file = run_dir / "usage.jsonl"
 
             # Check if this conversation + invocationNum was already logged
             already_logged = False
             existing_count = 0
-            if os.path.exists(usage_file):
+            if usage_file.exists():
                 with open(usage_file, "r", encoding="utf-8") as f:
                     for line in f:
                         if not line.strip():
@@ -47,7 +66,7 @@ def main():
 
             if not already_logged:
                 entry = {
-                    "timestamp": datetime.datetime.now().isoformat(),
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     "conversation_id": conversation_id,
                     "invocation_num": invocation_num,
                     "model_name": data.get("modelName", "auto")
@@ -58,8 +77,8 @@ def main():
 
             # Check budget limits from levels.json
             level = 1
-            state_file = os.path.join(run_dir, "state.json")
-            if os.path.exists(state_file):
+            state_file = run_dir / "state.json"
+            if state_file.exists():
                 try:
                     with open(state_file, "r", encoding="utf-8") as f:
                         st = json.load(f)
@@ -68,8 +87,8 @@ def main():
                     pass
 
             limit = 120
-            levels_file = ".agents/policies/levels.json"
-            if os.path.exists(levels_file):
+            levels_file = workspace_root / ".agents" / "policies" / "levels.json"
+            if levels_file.exists():
                 try:
                     with open(levels_file, "r", encoding="utf-8") as f:
                         lv_data = json.load(f)
@@ -96,9 +115,13 @@ def main():
 
         print(json.dumps({}))
     except Exception as e:
-        os.makedirs(".agents/state", exist_ok=True)
-        with open(".agents/state/hook-errors.log", "a", encoding="utf-8") as f:
-            f.write(f"postinvocation_budget exception: {str(e)}\n")
+        try:
+            err_log = workspace_root / ".agents" / "state" / "hook-errors.log"
+            err_log.parent.mkdir(parents=True, exist_ok=True)
+            with open(err_log, "a", encoding="utf-8") as f:
+                f.write(f"postinvocation_budget exception: {str(e)}\n")
+        except Exception:
+            pass
         print(json.dumps({}))
 
 if __name__ == "__main__":

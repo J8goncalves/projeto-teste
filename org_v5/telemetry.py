@@ -7,6 +7,7 @@ unverified or unmeasured metrics.
 from __future__ import annotations
 import json
 import os
+import re
 import time
 from pathlib import Path
 from datetime import datetime, timezone
@@ -15,35 +16,105 @@ from contextlib import contextmanager
 def stamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def resolve_run_id(data: dict | None = None, args: dict | None = None, root: Path | None = None, env: dict | None = None) -> str | None:
+    """Resolves run_id with strict priority hierarchy:
+    1. AGY_RUN_ID in environment
+    2. runId / run_id in data or args payload
+    3. Command line parsing (--run <RUN_ID>)
+    4. runs/CURRENT file in root (only if directory runs/<run_id> actually exists)
+    5. Returns None (unassigned).
+    """
+    if env is None:
+        env = os.environ
+    # 1. Environment variable
+    env_run = env.get('AGY_RUN_ID', '').strip()
+    if env_run:
+        return env_run
+
+    # 2. Payload parameters
+    if data and isinstance(data, dict):
+        for k in ('runId', 'run_id', 'run'):
+            val = str(data.get(k, '')).strip()
+            if val:
+                return val
+    if args and isinstance(args, dict):
+        for k in ('run_id', 'run', 'runId'):
+            val = str(args.get(k, '')).strip()
+            if val:
+                return val
+        cmd = args.get('CommandLine', '')
+        if isinstance(cmd, str) and cmd:
+            m = re.search(r'--run\s+([A-Za-z0-9_-]+)', cmd)
+            if m:
+                return m.group(1).strip()
+
+    # 3. runs/CURRENT
+    if root is not None:
+        curr_file = root / 'runs' / 'CURRENT'
+        if curr_file.exists():
+            try:
+                candidate = curr_file.read_text(encoding='utf-8').strip()
+                if candidate and (root / 'runs' / candidate).is_dir():
+                    return candidate
+            except Exception:
+                pass
+    return None
+
 def get_telemetry_file(root: Path, run_id: str) -> Path:
     p = root / 'runs' / run_id / 'telemetry' / 'events.jsonl'
     p.parent.mkdir(parents=True, exist_ok=True)
     return p
 
-def log_event(root: Path, run_id: str, event: dict) -> dict:
-    """Logs a telemetry event to events.jsonl atomically."""
-    path = get_telemetry_file(root, run_id)
+def log_event(root: Path, run_id: str | None, event: dict) -> dict:
+    """Logs a telemetry event.
+    If run_id is provided, writes to runs/<run_id>/telemetry/events.jsonl (canonical run log)
+    AND dual-writes to telemetry/events.jsonl (consolidated global log).
+    If run_id is None, writes ONLY to telemetry/events.jsonl as unassigned (run_id: null).
+    """
     entry = dict(event)
-    entry.setdefault('run_id', run_id)
+    entry['run_id'] = run_id
     entry.setdefault('timestamp', stamp())
     line = json.dumps(entry, ensure_ascii=False) + '\n'
-    with open(path, 'a', encoding='utf-8') as f:
+
+    # 1. Canonical run log
+    if run_id:
+        run_file = get_telemetry_file(root, run_id)
+        with open(run_file, 'a', encoding='utf-8') as f:
+            f.write(line)
+
+    # 2. Workspace-wide consolidated log (dual write)
+    global_file = root / 'telemetry' / 'events.jsonl'
+    global_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(global_file, 'a', encoding='utf-8') as f:
         f.write(line)
+
     return entry
 
 def read_events(root: Path, run_id: str) -> list[dict]:
-    """Reads all recorded telemetry events for a given run."""
+    """Reads all recorded telemetry events for a given run from its canonical log."""
     path = root / 'runs' / run_id / 'telemetry' / 'events.jsonl'
-    if not path.exists():
-        return []
     events = []
-    for line in path.read_text(encoding='utf-8').splitlines():
-        line = line.strip()
-        if line:
-            try:
-                events.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass
+    if path.exists():
+        for line in path.read_text(encoding='utf-8').splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+        return events
+    # Fallback to workspace log if per-run log not yet created
+    global_path = root / 'telemetry' / 'events.jsonl'
+    if global_path.exists():
+        for line in global_path.read_text(encoding='utf-8').splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    ev = json.loads(line)
+                    if ev.get('run_id') == run_id:
+                        events.append(ev)
+                except json.JSONDecodeError:
+                    pass
     return events
 
 class InvocationTelemetryContext:
@@ -118,49 +189,74 @@ def generate_report(root: Path, run_id: str) -> dict:
     from .control import read as read_state, MODES, PHASES
     state = read_state(root, run_id)
     events = read_events(root, run_id)
-    
+
     workflow_mode = state.get('workflow_mode', 'ENGINEERING_SMALL')
     execution_policy = state.get('execution_policy', 'STANDARD')
-    
+
     # Justification text
     justification = (
         f"Modo de fluxo '{workflow_mode}' selecionado para nível de risco {state.get('level', 1)}. "
         f"Política de execução '{execution_policy}' vinculada à branch '{state.get('branch', 'unknown')}' "
         f"para governança auditável com proteção estrita de produção."
     )
-    
+
     # Analyze events
     invocations_by_role: dict[str, list[dict]] = {}
+    tool_calls_count = 0
+    subagent_delegations_count = 0
+    governance_events_count = 0
+
     for ev in events:
-        role = ev.get('role', 'unknown')
-        invocations_by_role.setdefault(role, []).append(ev)
-        
+        ev_type = ev.get('event_type')
+        if ev_type == 'TOOL_CALL':
+            tool_calls_count += 1
+        elif ev_type == 'SUBAGENT_DELEGATION':
+            subagent_delegations_count += 1
+            for sub in ev.get('delegations', []):
+                role = sub.get('role', 'unknown')
+                invocations_by_role.setdefault(role, []).append({
+                    'role': role,
+                    'instance_id': ev.get('conversation_id', 'inst-subagent'),
+                    'duration_seconds': 0.0,
+                    'measurement_type': 'DELEGATED_SUBAGENT',
+                    'assurance': sub.get('assurance', 'UNVERIFIED/ROLE_ONLY'),
+                    'event_type': 'SUBAGENT_DELEGATION'
+                })
+        elif ev_type in ('ARTIFACT_SUBMISSION', 'ARTIFACT_REVIEW', 'PHASE_ADVANCE', 'RUN_INIT', 'HUMAN_APPROVAL', 'POLICY_AUTO_APPROVED'):
+            governance_events_count += 1
+            role = ev.get('role') or ev.get('reviewer')
+            if role:
+                invocations_by_role.setdefault(role, []).append(ev)
+        else:
+            role = ev.get('role', 'unknown')
+            invocations_by_role.setdefault(role, []).append(ev)
+
     effective_agents = []
     total_measured_duration = 0.0
-    
+
     for role, role_events in sorted(invocations_by_role.items()):
         inst_ids = {e.get('instance_id') for e in role_events if e.get('instance_id')}
         durations = [float(e.get('duration_seconds', 0.0)) for e in role_events if e.get('duration_seconds') is not None]
         role_duration = sum(durations)
         total_measured_duration += role_duration
-        
+
         arts = []
         for e in role_events:
             arts.extend(e.get('artifacts', []))
-            
+
         is_measured = any(e.get('measurement_type') == 'MEASURED_WALL_CLOCK' for e in role_events)
         measurement_label = 'MEDIDO_WALL_CLOCK' if is_measured else 'DECLARADO'
 
         effective_agents.append({
             'role': role,
             'instances': sorted(inst_ids) if inst_ids else ['NÃO VERIFICADO'],
-            'invocations_count': len([e for e in role_events if e.get('event_type') in ('invocation_end', 'invocation') or not e.get('event_type')]),
+            'invocations_count': len([e for e in role_events if e.get('event_type') in ('invocation_end', 'invocation') or not e.get('event_type') or e.get('event_type') == 'SUBAGENT_DELEGATION']),
             'total_duration_seconds': round(role_duration, 4),
             'measurement_method': measurement_label,
             'artifacts_produced': arts,
             'assurance': 'VERIFIED' if any(e.get('assurance') == 'VERIFIED' for e in role_events) else 'UNVERIFIED/ROLE_ONLY'
         })
-        
+
     # Planned vs. effective
     planned_for_mode = set()
     for phase_arts in MODES.get(workflow_mode, {}).values():
@@ -169,16 +265,16 @@ def generate_report(root: Path, run_id: str) -> dict:
             if art_kind in CONTRACTS:
                 planned_for_mode.add(CONTRACTS[art_kind][0])
     planned_for_mode.add('orchestrator')
-    
+
     effective_roles = {a['role'] for a in effective_agents}
     artifact_producers = {meta.get('role') for meta in state.get('artifacts', {}).values()}
     all_observed_roles = effective_roles.union(artifact_producers)
-    
+
     declared_only = sorted(planned_for_mode - all_observed_roles)
-    
+
     from .contracts import ROLES
     unnecessary = sorted(ROLES - planned_for_mode)
-    
+
     # Artifacts breakdown
     artifacts_report = []
     for aid, meta in sorted(state.get('artifacts', {}).items()):
@@ -195,7 +291,7 @@ def generate_report(root: Path, run_id: str) -> dict:
             'submitted_at': meta.get('submitted_at'),
             'path': meta.get('path')
         })
-        
+
     # Handoffs and history
     handoffs = []
     prev_role = None
@@ -221,7 +317,7 @@ def generate_report(root: Path, run_id: str) -> dict:
                     'verdict': item.get('verdict')
                 })
             prev_role = r
-            
+
     # Gates and approvals
     gates_summary = {}
     for g in ('BUILD', 'VERIFY', 'RELEASE', 'CLOSED'):
@@ -236,10 +332,10 @@ def generate_report(root: Path, run_id: str) -> dict:
             }
         else:
             gates_summary[g] = {'status': 'PENDING' if PHASES.index(state['phase']) < PHASES.index(g if g in PHASES else 'RELEASE') else 'NOT_REACHED'}
-            
+
     # Compile final telemetry summary
     telemetry_status = "VERIFIED_EVENTS" if events else "NÃO VERIFICÁVEL"
-    
+
     return {
         'schema': 'AUDIT_REPORT_V5_2',
         'run_id': run_id,
@@ -250,6 +346,12 @@ def generate_report(root: Path, run_id: str) -> dict:
         'current_phase': state.get('phase'),
         'justification': justification,
         'telemetry_verification': telemetry_status,
+        'events_summary': {
+            'total_events': len(events),
+            'tool_calls_count': tool_calls_count,
+            'subagent_delegations_count': subagent_delegations_count,
+            'governance_events_count': governance_events_count
+        },
         'agents_effective': effective_agents if events else [
             {
                 'role': r,

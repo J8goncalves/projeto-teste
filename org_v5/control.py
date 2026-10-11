@@ -132,7 +132,7 @@ def validate_policy_integrity(root: Path, state: dict):
         current_policy = state.get('execution_policy', 'STANDARD')
         if init_policy != current_policy:
             raise WorkflowError('execution policy tampering detected: cannot mutate execution_policy after init')
-    
+
     current_policy = state.get('execution_policy', 'STANDARD')
     if current_policy == 'TURBO_SANDBOX':
         curr_branch = get_current_git_branch(root)
@@ -148,12 +148,12 @@ def init(root: Path, run_id: str, goal: str, level: int, workflow_mode: str = 'E
     if workflow_mode not in MODES: raise WorkflowError('invalid workflow_mode')
     if execution_policy not in EXECUTION_POLICIES:
         raise WorkflowError(f"invalid execution_policy: expected one of {sorted(EXECUTION_POLICIES)}")
-        
+
     curr_branch = get_current_git_branch(root)
     if execution_policy == 'TURBO_SANDBOX':
         if curr_branch in ('main', 'master'):
             raise WorkflowError("TURBO_SANDBOX policy is prohibited on production branch ('main', 'master')")
-            
+
     d = run_dir(root, run_id)
     if d.exists(): raise WorkflowError('run already exists')
     state = {
@@ -172,6 +172,11 @@ def init(root: Path, run_id: str, goal: str, level: int, workflow_mode: str = 'E
         'history': [{'at': stamp(), 'action': 'init', 'execution_policy': execution_policy, 'branch': curr_branch}]
     }
     write_atomic(d / 'state.json', state)
+    try:
+        (root / 'runs').mkdir(parents=True, exist_ok=True)
+        (root / 'runs' / 'CURRENT').write_text(run_id, encoding='utf-8')
+    except Exception:
+        pass
     return state
 
 def read(root: Path, run_id: str) -> dict:
@@ -205,7 +210,7 @@ def submit(root: Path, run_id: str, doc: dict):
     missing = INPUT_REQUIREMENTS[doc['kind']] - predecessor_kinds
     if missing:
         raise WorkflowError(f'missing required predecessor kinds: {sorted(missing)}')
-        
+
     if doc['kind'] == 'release':
         builds = set()
         for upstream in doc['input_ids']:
@@ -218,9 +223,9 @@ def submit(root: Path, run_id: str, doc: dict):
                         builds.add(inner_up)
         if len(builds) > 1:
             raise WorkflowError('lineage error: release includes reports from diverging builds')
-        
+
     producer_identity = verify_actor_identity(doc['role'])
-    
+
     hash_ = digest(doc)
     path = run_dir(root, run_id) / 'artifacts' / f'{artifact_id}.json'
     write_atomic(path, doc)
@@ -241,27 +246,27 @@ def review(root: Path, run_id: str, artifact_id: str, reviewer: str, verdict: st
     validate_policy_integrity(root, state)
     meta = state['artifacts'].get(artifact_id)
     if not meta: raise WorkflowError('unknown artifact')
-    
+
     if reviewer not in ROLES or reviewer == meta['role'] or reviewer == 'orchestrator' or reviewer not in REVIEWERS.get(meta['kind'], set()):
         raise WorkflowError('independent reviewer required; no producer or orchestrator self-approval')
-    
+
     reviewer_identity = verify_actor_identity(reviewer)
     producer_identity = meta.get('producer_identity', {'assurance': 'UNVERIFIED'})
-    
+
     prod_id = producer_identity.get('agent_id')
     rev_id = reviewer_identity.get('agent_id')
     if prod_id and rev_id and prod_id == rev_id:
         raise WorkflowError('independent reviewer required; same agent instance cannot review its own artifact')
-        
+
     doc = load(root / meta['path'])
     validate_proof(root, doc)
-    
+
     if verdict not in ('ACCEPT', 'REWORK', 'REJECT'): raise WorkflowError('invalid review verdict')
     if not reason.strip(): raise WorkflowError('reason required')
     if digest(doc) != meta['sha256']: raise WorkflowError('artifact modified after submission')
     errors = validate(doc)
     if errors: raise WorkflowError('; '.join(errors))
-    
+
     if verdict == 'ACCEPT':
         if doc.get('verdict') in ('FAIL', 'BLOCKED', 'NOT_RUN'):
             raise WorkflowError('cannot accept unsuccessful verification')
@@ -276,7 +281,7 @@ def review(root: Path, run_id: str, artifact_id: str, reviewer: str, verdict: st
                 raise WorkflowError(f"critical gate '{meta['kind']}' requires verified independent reviewer; unverified reviewer cannot ACCEPT")
         else:
             accepted_identity = reviewer_identity
-            
+
         state['accepted'][artifact_id] = {
             'reviewer': reviewer,
             'at': stamp(),
@@ -302,11 +307,11 @@ def approval(root: Path, run_id: str, target: str, decision: str, actor: str, re
         raise WorkflowError('target is not a human-approval gate')
     if actor != 'human' or decision not in ('APPROVE', 'DENY'):
         raise WorkflowError('human actor, valid decision required')
-        
+
     for existing_target, app in state.get('approvals', {}).items():
         if existing_target != target and app.get('reference') == reference:
             raise WorkflowError(f"replay error: approval reference already used for gate {existing_target}")
-            
+
     if not expected_sha:
         if target == 'BUILD':
             arch_items = [m['sha256'] for aid, m in state.get('artifacts', {}).items() if m.get('kind') == 'architecture' and aid in state.get('accepted', {})]
@@ -327,16 +332,16 @@ def approval(root: Path, run_id: str, target: str, decision: str, actor: str, re
         raise WorkflowError(f"gate '{target}' requires an explicit or state-derived immutable expected_sha (artifact or commit hash)")
 
     verification = verify_human_approval(reference, target, run_id, expected_sha=expected_sha, expected_candidate_id=candidate_id, root=root)
-    
+
     if verification['status'] == 'PENDING_HUMAN':
         state['approvals'][target] = {'actor': actor, 'decision': 'PENDING_HUMAN', 'reference': reference, 'at': stamp(), 'reason': verification.get('reason')}
         state['history'].append({'at': stamp(), 'action': 'human_decision_pending', 'target': target, 'reference': reference})
         save(root, state)
         raise WorkflowError(f"APPROVAL_PENDING: {verification.get('reason')}")
-        
+
     comment_url = verification.get('comment_url', reference)
     canonical_id = verification.get('canonical_id')
-        
+
     state['approvals'][target] = {
         'actor': verification['actor'],
         'decision': decision,
@@ -360,29 +365,29 @@ def advance(root: Path, run_id: str, target: str):
         raise WorkflowError('run blocked; human intervention required')
     if state['phase'] not in PHASES or target not in PHASES or PHASES.index(target) != PHASES.index(state['phase']) + 1:
         raise WorkflowError('non-sequential or invalid phase transition')
-        
+
     mode = state.get('workflow_mode', 'ENGINEERING_SMALL')
     required_artifacts = MODES[mode].get(target, [])
-    
+
     for kind in required_artifacts:
         items = [(aid, m) for aid, m in state['artifacts'].items() if m['kind'] == kind and aid in state['accepted']]
         if not items: raise WorkflowError(f'missing independently accepted artifact: {kind}')
         for aid, m in items:
             if digest(load(root / m['path'])) != m['sha256']:
                 raise WorkflowError(f'artifact changed: {aid}')
-                
+
     if target in HUMAN_STATES:
         current_policy = state.get('execution_policy', 'STANDARD')
         if current_policy == 'TURBO_SANDBOX':
             curr_branch = get_current_git_branch(root)
             if curr_branch in ('main', 'master'):
                 raise WorkflowError("TURBO_SANDBOX policy cannot auto-advance on production branch ('main', 'master')")
-            
+
             # Auto-approve policy event for turbo sandbox
             arch_items = [m['sha256'] for aid, m in state.get('artifacts', {}).items() if m.get('kind') == 'architecture' and aid in state.get('accepted', {})]
             build_items = [m['sha256'] for aid, m in state.get('artifacts', {}).items() if m.get('kind') == 'build' and aid in state.get('accepted', {})]
             expected_sha = arch_items[-1] if target == 'BUILD' and arch_items else (build_items[-1] if target == 'RELEASE' and build_items else None)
-            
+
             scope_desc = 'candidate_package_only' if target == 'RELEASE' else ('sandbox_closed' if target == 'CLOSED' else 'development')
             state['approvals'][target] = {
                 'actor': 'policy_engine',
@@ -403,7 +408,7 @@ def advance(root: Path, run_id: str, target: str):
             approval_record = state['approvals'].get(target, {})
             if approval_record.get('decision') != 'APPROVE' or not approval_record.get('verified'):
                 raise WorkflowError(f'no recorded verified human approval for {target}')
-                
+
     state['phase'] = target
     state['history'].append({'at': stamp(), 'action': 'advance', 'to': target})
     save(root, state)
@@ -421,11 +426,11 @@ def resume(root: Path, run_id: str, reference: str):
         raise WorkflowError('run is not in ESCALATED phase')
     if not isinstance(reference, str) or not reference.startswith('https://github.com/'):
         raise WorkflowError('human resolution with GitHub reference needed')
-        
+
     verification = verify_human_approval(reference, 'ESCALATION_RESOLVED', run_id, root=root)
     if verification.get('status') != 'APPROVED':
         raise WorkflowError(f"ESCALATION_RESUME_DENIED: {verification.get('reason', 'unverified reference')}")
-        
+
     phase = state['escalation']['from']
     state['phase'] = phase
     state['approvals']['ESCALATION_RESOLVED'] = {

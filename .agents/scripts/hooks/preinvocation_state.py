@@ -9,6 +9,24 @@ def resolve_workspace_root(data):
         return Path(wp[0]).resolve()
     return Path(__file__).resolve().parents[3]
 
+def resolve_run_id(data, workspace_root):
+    env_run = os.environ.get("AGY_RUN_ID", "").strip()
+    if env_run:
+        return env_run
+    for k in ("runId", "run_id", "run"):
+        val = str(data.get(k, "")).strip()
+        if val:
+            return val
+    curr_file = workspace_root / "runs" / "CURRENT"
+    if curr_file.exists():
+        try:
+            cand = curr_file.read_text(encoding="utf-8").strip()
+            if cand and (workspace_root / "runs" / cand).is_dir():
+                return cand
+        except Exception:
+            pass
+    return None
+
 def main():
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -19,7 +37,7 @@ def main():
         raw_input = sys.stdin.read()
         data = json.loads(raw_input) if raw_input.strip() else {}
         workspace_root = resolve_workspace_root(data)
-        
+
         # Check STOP
         stop_file = workspace_root / ".agents" / "state" / "STOP"
         if stop_file.exists():
@@ -31,10 +49,9 @@ def main():
             return
 
         # Check ESCALATED or PAUSED using canonical phase
-        curr_file = workspace_root / "runs" / "CURRENT"
-        if curr_file.exists():
+        run_id = resolve_run_id(data, workspace_root)
+        if run_id:
             try:
-                run_id = curr_file.read_text(encoding="utf-8").strip()
                 st_file = workspace_root / "runs" / run_id / "state.json"
                 if st_file.exists():
                     st = json.loads(st_file.read_text(encoding="utf-8"))
