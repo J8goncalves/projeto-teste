@@ -62,37 +62,6 @@
       "reason": "Escrita em memória fora da rota governada bloqueada."
     }
   ],
-  "allow_rules": [
-    {
-      "id": "safe-read-inspection",
-      "tools": ["view_file", "list_dir", "grep_search", "find_by_name"],
-      "condition": "workspace_safe_path"
-    },
-    {
-      "id": "safe-git-read",
-      "tools": ["run_command"],
-      "condition": "command_regex",
-      "pattern": "^git\\s+(status|diff|log|branch|show)(\\s+.*)?$"
-    },
-    {
-      "id": "safe-unittest-execution",
-      "tools": ["run_command"],
-      "condition": "command_regex",
-      "pattern": "^(\\.?\\.?\\\\\\.venv\\\\Scripts\\\\python(\\.exe)?|node)\\s+.*(unittest|--test|test_).*$"
-    },
-    {
-      "id": "safe-control-plane-read",
-      "tools": ["run_command"],
-      "condition": "command_regex",
-      "pattern": "^(\\.?\\.?\\\\\\.venv\\\\Scripts\\\\python(\\.exe)?)\\s+-m\\s+org_v5\\.cli\\s+(report|status|validate|events).*$"
-    },
-    {
-      "id": "safe-evidence-writer",
-      "tools": ["run_command"],
-      "condition": "command_regex",
-      "pattern": "^(\\.?\\.?\\\\\\.venv\\\\Scripts\\\\python(\\.exe)?)\\s+\\.agents[\\\\/]scripts[\\\\/]utf8_writer\\.py\\s+.*$"
-    }
-  ],
   "force_ask_rules": [
     {
       "id": "cloud-deploy-publish",
@@ -114,6 +83,60 @@
       "condition": "command_regex",
       "pattern": "^(npm\\s+(install|i|add)|pip\\s+install|cargo\\s+add|go\\s+get)",
       "reason": "Instalação de novas dependências requer confirmação."
+    },
+    {
+      "id": "destructive-sensitive",
+      "tools": ["run_command"],
+      "condition": "command_regex",
+      "pattern": "rm\\s+-r|Remove-Item\\s+-Recurse|rd\\s+/s|git\\s+clean\\s+-f|git\\s+reset\\s+--hard",
+      "reason": "Confirmação exigida para comando com potencial destrutivo."
+    }
+  ],
+  "allow_rules": [
+    {
+      "id": "safe-read-inspection",
+      "tools": ["view_file", "list_dir", "grep_search", "find_by_name"],
+      "condition": "workspace_safe_path"
+    },
+    {
+      "id": "safe-git-read",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "git"
+    },
+    {
+      "id": "safe-unittest-execution",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "unittest"
+    },
+    {
+      "id": "safe-control-plane-read",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "control_plane"
+    },
+    {
+      "id": "safe-evidence-writer",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "evidence_writer"
+    },
+    {
+      "id": "safe-which-where",
+      "tools": ["run_command"],
+      "condition": "strict_safe_command",
+      "subsystem": "which_where"
+    },
+    {
+      "id": "safe-subagent-delegation",
+      "tools": ["invoke_subagent"],
+      "condition": "always"
+    },
+    {
+      "id": "safe-workspace-file-write",
+      "tools": ["write_to_file", "replace_file_content", "multi_replace_file_content"],
+      "condition": "workspace_internal_write"
     }
   ]
 }

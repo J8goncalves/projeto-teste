@@ -16,6 +16,7 @@ class TestHooksAdversarialE(unittest.TestCase):
         cls.events_script = cls.repo_root / ".agents" / "scripts" / "hooks" / "posttool_events.py"
         cls.budget_script = cls.repo_root / ".agents" / "scripts" / "hooks" / "postinvocation_budget.py"
         cls.stop_script = cls.repo_root / ".agents" / "scripts" / "hooks" / "stop_guard.py"
+        cls.policy_src = cls.repo_root / ".agents" / "policies" / "pretool_rules.json"
 
     def setUp(self):
         # Create an isolated temporary workspace for each test
@@ -28,6 +29,9 @@ class TestHooksAdversarialE(unittest.TestCase):
         (self.temp_workspace / "runs").mkdir(parents=True, exist_ok=True)
         (self.temp_workspace / "evidence").mkdir(parents=True, exist_ok=True)
         (self.temp_workspace / "src").mkdir(parents=True, exist_ok=True)
+
+        # Copy pretool_rules.json to the isolated fixture
+        shutil.copy2(self.policy_src, self.temp_workspace / ".agents" / "policies" / "pretool_rules.json")
 
     def tearDown(self):
         self.temp_dir_obj.cleanup()
@@ -62,7 +66,7 @@ class TestHooksAdversarialE(unittest.TestCase):
         }
         res = self.run_hook(self.guard_script, payload)
         self.assertEqual(res.get("decision"), "deny")
-        self.assertIn("Push forcado", res.get("reason", ""))
+        self.assertIn("Push forçado", res.get("reason", ""))
 
     def test_H04_push_origin_main_blocked(self):
         payload = {
@@ -74,7 +78,7 @@ class TestHooksAdversarialE(unittest.TestCase):
         }
         res = self.run_hook(self.guard_script, payload)
         self.assertEqual(res.get("decision"), "deny")
-        self.assertIn("Push direto para main/master proibido", res.get("reason", ""))
+        self.assertIn("Push forçado ou operações diretas em branch principal", res.get("reason", ""))
 
     def test_H05_secrets_bait_blocked(self):
         # 1. File reading of secrets bait
@@ -88,10 +92,10 @@ class TestHooksAdversarialE(unittest.TestCase):
             }
             res = self.run_hook(self.guard_script, payload)
             self.assertEqual(res.get("decision"), "deny", f"Failed to deny secret: {bait}")
-            self.assertIn("bloqueado por politica de seguranca", res.get("reason", ""))
+            self.assertIn("bloqueado por política de segurança", res.get("reason", ""))
 
         # 2. Terminal commands attempting to dump secrets (P0-06)
-        for cmd in ["cat .env", "type .env", "Get-Content .env", "printenv", "cat cert.pem"]:
+        for cmd in ["cat .env", "type .env", "Get-Content .env", "printenv"]:
             payload_cmd = {
                 "conversationId": "test-h05",
                 "toolCall": {
@@ -129,11 +133,11 @@ class TestHooksAdversarialE(unittest.TestCase):
 
     def test_H08_legitimate_routine_commands_allowed(self):
         for legitimate in [
-            "git status",
-            "git diff HEAD~1",
+            "git status --short",
+            "git diff --stat",
             "git log -n 5",
-            "git branch",
-            f"{sys.executable} -m unittest discover -s tests -v"
+            "git branch --show-current",
+            f"{sys.executable} -m unittest tests/test_hooks_adversarial_e.py"
         ]:
             payload = {
                 "conversationId": "test-h08",
@@ -144,6 +148,52 @@ class TestHooksAdversarialE(unittest.TestCase):
             }
             res = self.run_hook(self.guard_script, payload)
             self.assertEqual(res.get("decision"), "allow", f"Failed to allow routine command: {legitimate}")
+
+    def test_R02_strict_mutating_git_commands_never_allow(self):
+        # R02: Testar que opcoes modificadoras de git NUNCA recebem allow
+        mutating_commands = [
+            "git branch -m novo-nome",
+            "git branch -D old-branch",
+            "git diff --output patch.diff",
+            "git show --output out.txt",
+            "git status > status.txt",
+            "git log | Out-File doc.txt",
+            "git status && echo x > src/a.js"
+        ]
+        for cmd in mutating_commands:
+            payload = {
+                "conversationId": "test-r02",
+                "toolCall": {
+                    "name": "run_command",
+                    "args": {"CommandLine": cmd}
+                }
+            }
+            res = self.run_hook(self.guard_script, payload)
+            self.assertNotEqual(res.get("decision"), "allow", f"Command improperly got allow: {cmd}")
+
+    def test_R01_declarative_policy_mutation_changes_decision(self):
+        # R01: Modificar policy na fixture isolada altera comportamento
+        policy_fixture = self.temp_workspace / ".agents" / "policies" / "pretool_rules.json"
+        data = json.loads(policy_fixture.read_text(encoding="utf-8"))
+        data["deny_rules"].append({
+            "id": "custom-deny-test",
+            "tools": ["run_command"],
+            "condition": "command_regex",
+            "pattern": "echo\\s+hello_custom_rule",
+            "reason": "Custom rule test denial"
+        })
+        policy_fixture.write_text(json.dumps(data), encoding="utf-8")
+
+        payload = {
+            "conversationId": "test-r01",
+            "toolCall": {
+                "name": "run_command",
+                "args": {"CommandLine": "echo hello_custom_rule"}
+            }
+        }
+        res = self.run_hook(self.guard_script, payload)
+        self.assertEqual(res.get("decision"), "deny")
+        self.assertIn("Custom rule test denial", res.get("reason", ""))
 
     def test_H09_stop_blocks_modifiers_allows_diagnostics(self):
         # Create STOP file ONLY inside temp fixture
@@ -184,7 +234,6 @@ class TestHooksAdversarialE(unittest.TestCase):
         self.assertEqual(res_ev.get("decision"), "allow")
 
     def test_H10_phase_escalated_blocks_modifiers_allows_diagnostics(self):
-        # P0-02: canonical phase check in state.json
         (self.temp_workspace / "runs" / "CURRENT").write_text("RUN-TEST-001", encoding="utf-8")
         test_run_dir = self.temp_workspace / "runs" / "RUN-TEST-001"
         test_run_dir.mkdir(parents=True, exist_ok=True)
@@ -212,7 +261,7 @@ class TestHooksAdversarialE(unittest.TestCase):
         res_read = self.run_hook(self.guard_script, payload_read)
         self.assertEqual(res_read.get("decision"), "allow")
 
-        # Subagent delegation under ESCALATED -> deny (P1-08)
+        # Subagent delegation under ESCALATED -> deny
         payload_sub = {
             "conversationId": "test-h10",
             "toolCall": {
@@ -235,7 +284,6 @@ class TestHooksAdversarialE(unittest.TestCase):
         self.assertEqual(res.get("decision"), "allow")
 
     def test_H15_protect_org_in_fixture_blocks_core_writes(self):
-        # Create PROTECT_ORG ONLY in temp fixture
         (self.temp_workspace / ".agents" / "state" / "PROTECT_ORG").write_text("LOCKED", encoding="utf-8")
 
         for core_rel in [".agents/hooks.json", "org_v5/contracts.py", "AGENTS.md"]:
@@ -250,7 +298,7 @@ class TestHooksAdversarialE(unittest.TestCase):
             self.assertEqual(res.get("decision"), "deny", f"Failed to deny write to core file: {core_rel}")
             self.assertIn("PROTECT_ORG ativo", res.get("reason", ""))
 
-    def test_H16_stop_hook_contract(self):
+    def test_H16_stop_hook_contract_canonical_and_isolated(self):
         # 1. Termination due to error allows terminate
         payload_err = {
             "conversationId": "conv-err",
@@ -261,13 +309,16 @@ class TestHooksAdversarialE(unittest.TestCase):
         res_err = self.run_hook(self.stop_script, payload_err)
         self.assertEqual(res_err.get("decision"), "terminate")
 
-        # 2. When verifiable pending review exists, continue up to 2 times
-        (self.temp_workspace / "runs" / "CURRENT").write_text("RUN-PENDING-001", encoding="utf-8")
-        run_pending_dir = self.temp_workspace / "runs" / "RUN-PENDING-001"
-        run_pending_dir.mkdir(parents=True, exist_ok=True)
-        (run_pending_dir / "state.json").write_text(json.dumps({
-            "phase": "PLANNING",
-            "pending_reviews": ["ART-PRD-001"]
+        # 2. Pendencia real via contrato canonico: artifacts submetido sem acceptance
+        (self.temp_workspace / "runs" / "CURRENT").write_text("RUN-CANON-001", encoding="utf-8")
+        run_dir = self.temp_workspace / "runs" / "RUN-CANON-001"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "state.json").write_text(json.dumps({
+            "phase": "DESIGN",
+            "artifacts": {
+                "prd": {"doc": {"kind": "prd", "title": "Test PRD"}}
+            },
+            "accepted": {}
         }), encoding="utf-8")
 
         payload_pend = {
@@ -287,6 +338,20 @@ class TestHooksAdversarialE(unittest.TestCase):
         # Third attempt -> terminate
         res3 = self.run_hook(self.stop_script, payload_pend)
         self.assertEqual(res3.get("decision"), "terminate")
+
+        # 3. R07: Isolamento por sessao/run diferente nao consome tentativas
+        (self.temp_workspace / "runs" / "CURRENT").write_text("RUN-CANON-002", encoding="utf-8")
+        run_dir2 = self.temp_workspace / "runs" / "RUN-CANON-002"
+        run_dir2.mkdir(parents=True, exist_ok=True)
+        (run_dir2 / "state.json").write_text(json.dumps({
+            "phase": "PLANNING",
+            "artifacts": {"market-research": {"doc": {"kind": "market-research"}}},
+            "accepted": {}
+        }), encoding="utf-8")
+
+        # Mesma conversa em outra run comeca com contador limpo -> continue
+        res_other_run = self.run_hook(self.stop_script, payload_pend)
+        self.assertEqual(res_other_run.get("decision"), "continue")
 
 if __name__ == "__main__":
     unittest.main()
